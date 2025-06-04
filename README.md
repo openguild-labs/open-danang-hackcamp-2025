@@ -1,4 +1,3 @@
-
 <div align="center">
 
 ![Da Nang Hackcamp](./assets/danang_hackcamp.png)
@@ -34,6 +33,7 @@ Go to **Participant Registration** section and register to be the workshop parti
 
 ```
 | 🦄 | Name | Github username | Your current occupation |
+| 🐈 | Tien Dung | Tizun71 | Student |
 ```
 
 - Step 5: `Commit` your code and push to the forked Github repository
@@ -53,16 +53,16 @@ git commit -m "<Your Name> | Register for OpenGuild Da Nang Hackcamp 2025"
 
 ## Discover the List of Challenges 🏆
 
-Total OpenGuild prize pool: **2000$ / 5 winners** 
+Total OpenGuild prize pool: **2000$ / 5 winners**
 <br/>
 Total Bifrost Parner prize pool: **300$-1000$** (dedicated to Bifrost's Challenge)
-| Challenge | Description                                                                                                                                                                                                      | Action                                               | Bounty |
+| Challenge | Description | Action | Bounty |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
-| 1         | Building Uniswap V2 Application                                                                      | [Take Challenge](./challenge-1-uniswapv2/README.md)    | $    |
-| 2         | Building Lending and Borrowing Application                                                                       | [Take Challenge](./challenge-2-lending-borrowing/README.md) | $    |
-| 3         | Build a cross-chain application using XCM | [Take Challenge](./challenge-3-xcm/README.md)   | $    |
-| 4        | Polkadot SDK  | [Take Challenge](./challenge-4-polkadot-sdk/README.md)   | $    |
-| Parner Track - Bifrost        | Create a unique and optimal UX for interacting with Bifrost Liquid Staking Tokens available on many chains | [Take Challenge](./challenge-bifrost/README.md)   | $300-$1000    |
+| 1 | Building Uniswap V2 Application | [Take Challenge](./challenge-1-uniswapv2/README.md) | $ |
+| 2 | Building Lending and Borrowing Application | [Take Challenge](./challenge-2-lending-borrowing/README.md) | $ |
+| 3 | Build a cross-chain application using XCM | [Take Challenge](./challenge-3-xcm/README.md) | $ |
+| 4 | Polkadot SDK | [Take Challenge](./challenge-4-polkadot-sdk/README.md) | $ |
+| Parner Track - Bifrost | Create a unique and optimal UX for interacting with Bifrost Liquid Staking Tokens available on many chains | [Take Challenge](./challenge-bifrost/README.md) | $300-$1000 |
 </br>
 </br>
 
@@ -70,21 +70,19 @@ Total Bifrost Parner prize pool: **300$-1000$** (dedicated to Bifrost's Challeng
 
 ## 👉 Resource for Development and Support Channels
 
-### Paseo Contract Faucet 
+### Paseo Contract Faucet
 
 Link : https://faucet.polkadot.io/?parachain=1111
 
-### Explorer 
+### Explorer
 
 Link : https://blockscout-passet-hub.parity-testnet.parity.io/
 
 ### RPC
 
-+ ETH - EVM-compatible RPC: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
+- ETH - EVM-compatible RPC: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
 
-+ ChainID: `0x190f1b45`
-
-
+- ChainID: `0x190f1b45`
 
 ### Resources
 
@@ -97,16 +95,12 @@ Link : https://blockscout-passet-hub.parity-testnet.parity.io/
 - [OpenGuild Learn](https://learn.openguild.wtf/)
 
 ### Support Channels
+
 - [Discord OpenGuild](https://github.com/openguild-labs)
 - [Discord Polkadot](https://discord.gg/polkadot)
 - [Stack Exchange](https://substrate.meta.stackexchange.com/)
 - [Telegram](https://t.me/substratedevs)
 - [Reddit](https://www.reddit.com/r/Polkadot/)
-
-
-
-
-
 
 ## 👉 Contribute to OpenGuild Community
 
@@ -116,8 +110,3 @@ OpenGuild is a builder-driven community centered around Polkadot. OpenGuild is b
 - **Website:** [OpenGuild Website](https://openguild.wtf/)
 - **Github:** [OpenGuild Labs](https://github.com/openguild-labs)
 - **Discord**: [Openguild Discord Channel](https://discord.gg/bcjMzxqtD7)
-
-
-
-
-
