@@ -12,7 +12,7 @@ export default function Home() {
           height={38}
           priority
         />
-        <p>Get started by checking out the demos</p>
+        <p>Get started by checking out the demos DLV</p>
         <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
           <li className="mb-2">
             <Link href="/wallet">Wallet</Link>
