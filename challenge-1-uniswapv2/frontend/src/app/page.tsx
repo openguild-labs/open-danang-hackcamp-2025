@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import toast, { Toaster } from 'react-hot-toast';
+import { ConnectWallet } from '../components/ConnectWallet';
+import { useWeb3 } from '../hooks/useWeb3';
 
 // Extend the Window interface to include ethereum
 declare global {
@@ -84,6 +86,8 @@ export default function Home() {
     const [liquidityAmountA, setLiquidityAmountA] = useState<string>('');
     const [liquidityAmountB, setLiquidityAmountB] = useState<string>('');
     const [removeLiquidityAmount, setRemoveLiquidityAmount] = useState<string>('');
+
+    const { address, isConnected, chain } = useWeb3();
 
     useEffect(() => {
         // Load contract addresses
@@ -269,18 +273,7 @@ export default function Home() {
                     UniswapV2 DEX
                 </h1>
 
-                {account ? (
-                    <div className="text-white bg-white/20 px-4 py-2 rounded-lg">
-                        {account.slice(0, 6)}...{account.slice(-4)}
-                    </div>
-                ) : (
-                    <button
-                        onClick={connectWallet}
-                        className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium transition-colors"
-                    >
-                        Connect Wallet
-                    </button>
-                )}
+                <ConnectWallet />
             </header>
 
             <div className="container mx-auto px-6 py-8">
