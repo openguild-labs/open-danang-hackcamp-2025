@@ -1,12 +1,25 @@
 {
-  "name": "hardhat-example",
+  "name": "lending-borrowing-dapp",
   "version": "1.0.0",
-  "description": "",
+  "description": "DeFi Lending & Borrowing Application for Polkadot Hackathon",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx hardhat test",
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run scripts/deploy.js --config hardhat.polkadot.config.ts --network paseoAssetHub",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
+    "node": "npx hardhat node",
+    "dev": "react-scripts start",
+    "build": "react-scripts build",
+    "eject": "react-scripts eject"
   },
-  "keywords": [],
+  "keywords": [
+    "defi",
+    "lending",
+    "borrowing",
+    "polkadot",
+    "ethereum"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -15,12 +28,32 @@
     "@nomicfoundation/hardhat-ignition": "^0.15.11",
     "@parity/hardhat-polkadot": "^0.1.5",
     "@types/node": "^22.15.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "chai": "^4.3.7",
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
     "ethers": "^6.14.0",
     "hardhat": "^2.22.0",
-    "@nomicfoundation/hardhat-ethers": "^3.0.8"
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@openzeppelin/contracts": "^5.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^3.3.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
