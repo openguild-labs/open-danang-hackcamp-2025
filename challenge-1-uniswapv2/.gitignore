@@ -20,6 +20,8 @@ ignition/deployments/chain-31337
 # Ignition deployments for westend 
 ignition/deployments/chain-westend
 
+ignition/deployments/chain-420420421
+
 
 cache-pvm
 artifacts-pvm

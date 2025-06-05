@@ -10,16 +10,29 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.10",
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@parity/hardhat-polkadot": "^0.1.6",
     "@parity/revive": "^0.0.9",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": "^10.0.10",
+    "chai": "^4.2.0",
+    "dotenv": "^16.5.0",
     "ethereum-waffle": "^4.0.10",
     "ethers": "^6.13.5",
-    "hardhat": "2.22.18"
+    "hardhat": "2.22.18",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solc": "^0.8.28",
+    "solidity-coverage": "^0.8.1"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.9",
-    "dotenv": "^16.4.7",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat-resolc": "^0.0.8",
     "hardhat-revive-node": "^0.0.6"
   }

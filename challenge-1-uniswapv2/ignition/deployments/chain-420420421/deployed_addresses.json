@@ -1,4 +1,5 @@
 {
-  "UniswapV2FactoryModule#WETH": "0x28c09c396D3c54B2c5f4fC571f562be66bF43776",
-  "UniswapV2FactoryModule#UniswapV2Factory": "0xf75fc7ED77b6a6dc54900501b992DaEeB531c457"
+  "UniswapV2PairModule#UniswapV2ERC20": "0x2cD71Fb0600627757b212bd174B9FE3F315E9786",
+  "UniswapV2PairModule#UniswapV2Factory": "0xabD36F22729543D7A43b6E044d17F51201ACd326",
+  "UniswapV2PairModule#WETH": "0x0eb09a1b25EC457f442E5F4F84591F94B9d6B846"
 }
