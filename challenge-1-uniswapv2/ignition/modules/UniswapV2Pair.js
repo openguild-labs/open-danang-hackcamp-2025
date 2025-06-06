@@ -15,7 +15,8 @@ const UniswapV2PairModule = buildModule("UniswapV2PairModule", (m) => {
 
   const factory = m.contractAt(
     "UniswapV2Factory",
-    "0xabD36F22729543D7A43b6E044d17F51201ACd326"
+    // "0xabD36F22729543D7A43b6E044d17F51201ACd326"
+    "0x2421575005CA2340D6Cc80E568E8622a07Bfd170"
   );
 
   console.log("Creating UniswapV2Pair contract...");

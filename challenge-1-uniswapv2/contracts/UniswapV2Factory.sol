@@ -11,10 +11,16 @@ contract UniswapV2Factory is IUniswapV2Factory {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
 
-    event PairCreated(address indexed token0, address indexed token1, address pair, uint);
+    event PairCreated(
+        address indexed token0,
+        address indexed token1,
+        address pair,
+        uint
+    );
 
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
+        // pairRuntimeCode = type(UniswapV2Pair).runtimeCode;
     }
 
     function allPairsLength() external view returns (uint) {

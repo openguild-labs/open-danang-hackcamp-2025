@@ -1,14 +1,14 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@parity/hardhat-polkadot");
 
-// require("hardhat-resolc");
-require("hardhat-revive-node");
-
 require("dotenv").config();
-// require("hardhat-revive-node");
+
+require("./tasks/compile-revive.js");
+require("./tasks/deploy.js");
+
 /** @type import('hardhat/config').HardhatUserConfig */
 const config = {
-  solidity: "0.8.19",
+  solidity: "0.8.28",
   resolc: {
     version: "1.5.2",
     compilerSource: "npm",
@@ -17,7 +17,7 @@ const config = {
         enabled: true,
         parameters: "z",
         fallbackOz: true,
-        runs: 200,
+        runs: 400,
       },
     },
   },

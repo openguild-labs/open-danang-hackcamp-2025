@@ -27,13 +27,12 @@
     "ethers": "^6.13.5",
     "hardhat": "2.22.18",
     "hardhat-gas-reporter": "^1.0.8",
-    "solc": "^0.8.28",
+    "solc": "0.8.28",
     "solidity-coverage": "^0.8.1"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.9",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat-resolc": "^0.0.8",
     "hardhat-revive-node": "^0.0.6"
   }
 }
