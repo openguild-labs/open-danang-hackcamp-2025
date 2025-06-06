@@ -11,7 +11,7 @@ const unbounded = Unbounded({
 })
 
 export const metadata: Metadata = {
-  title: "DOT UI kit",
+  title: "OpenGuild DaNang Hackcamp 2025",
   description: "a UI kit for Polkadot DApps",
 };
 
