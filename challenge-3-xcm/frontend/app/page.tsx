@@ -102,7 +102,24 @@ export default function Home() {
           </a>
         </div>
         <div className="text-sm text-muted-foreground">
-          Maintained by <a className="underline underline-offset-4" href="https://buildstation.org" target="_blank" rel="noopener noreferrer">buildstation.org</a> with support from <a className="underline underline-offset-4" href="https://openguild.wtf" target="_blank" rel="noopener noreferrer">OpenGuild</a>
+          Maintained by{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://buildstation.org"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            buildstation.org
+          </a>{" "}
+          with support from{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://openguild.wtf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            OpenGuild
+          </a>
         </div>
       </footer>
     </div>
