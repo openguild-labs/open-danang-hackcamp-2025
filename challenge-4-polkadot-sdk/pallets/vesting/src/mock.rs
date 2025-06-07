@@ -4,8 +4,8 @@
 
 use super::*;
 use polkadot_sdk::{frame_support::{
-	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64, EnsureOrigin},
+	construct_runtime, derive_impl,
+	traits::{ConstU32, ConstU64},
 }, sp_runtime::traits::ConvertInto};
 
 use polkadot_sdk::{
@@ -70,7 +70,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 
-pub const ALICE_BALANCE: u64 = 100;
+pub const ALICE_BALANCE: u64 = 1000;
 pub const CHARLIE_BALANCE: u64 = 50;
 
 #[derive(Default)]
@@ -93,4 +93,3 @@ impl ExtBuilder {
 		t.into()
 	}
 }
-
