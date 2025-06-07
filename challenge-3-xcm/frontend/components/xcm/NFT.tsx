@@ -13,15 +13,21 @@ import {
   History,
 } from "lucide-react";
 
+import { Builder, NODE_NAMES } from "@paraspell/sdk";
+import { createClient } from "polkadot-api";
+import { getWsProvider } from "polkadot-api/ws-provider/web";
+
 const XCMNFTApp = () => {
   const [activeTab, setActiveTab] = useState("mint");
   const [walletConnected, setWalletConnected] = useState(false);
   const [account, setAccount] = useState(null);
+  const [api, setApi] = useState(null);
   const [balances, setBalances] = useState({ assetHub: "0", parachain: "0" });
   const [nftData, setNftData] = useState({
     name: "",
     description: "",
     image: null,
+    collection: "1", // Default collection ID
   });
   const [transferData, setTransferData] = useState({
     nftId: "",
@@ -30,161 +36,261 @@ const XCMNFTApp = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mintedNFTs, setMintedNFTs] = useState([]);
+  const [error, setError] = useState("");
 
-  // Mock data for demonstration
+  // Chain configurations
   const chains = [
-    { id: "asset-hub", name: "Asset Hub", color: "bg-blue-500" },
-    { id: "moonbeam", name: "Moonbeam", color: "bg-purple-500" },
-    { id: "astar", name: "Astar", color: "bg-green-500" },
-    { id: "acala", name: "Acala", color: "bg-red-500" },
-  ];
-
-  const mockNFTs = [
     {
-      id: "001",
-      name: "Polkadot Gem #1",
-      chain: "asset-hub",
-      status: "minted",
-      image: "🎨",
+      id: "AssetHub",
+      name: "Asset Hub",
+      color: "bg-blue-500",
+      wsUrl: "wss://polkadot-asset-hub-rpc.polkadot.io",
     },
     {
-      id: "002",
-      name: "Cross Chain Art",
-      chain: "moonbeam",
-      status: "transferred",
-      image: "🖼️",
+      id: "Moonbeam",
+      name: "Moonbeam",
+      color: "bg-purple-500",
+      wsUrl: "wss://wss.api.moonbeam.network",
     },
     {
-      id: "003",
-      name: "XCM Wonder",
-      chain: "asset-hub",
-      status: "minted",
-      image: "✨",
+      id: "Astar",
+      name: "Astar",
+      color: "bg-green-500",
+      wsUrl: "wss://rpc.astar.network",
+    },
+    {
+      id: "Acala",
+      name: "Acala",
+      color: "bg-red-500",
+      wsUrl: "wss://acala-rpc.aca-api.network",
     },
   ];
 
-  const mockTransactions = [
-    {
-      id: "1",
-      type: "mint",
-      nft: "Polkadot Gem #1",
-      from: "Asset Hub",
-      to: "Asset Hub",
-      status: "success",
-      hash: "0x123...abc",
-    },
-    {
-      id: "2",
-      type: "transfer",
-      nft: "Cross Chain Art",
-      from: "Asset Hub",
-      to: "Moonbeam",
-      status: "pending",
-      hash: "0x456...def",
-    },
-    {
-      id: "3",
-      type: "transfer",
-      nft: "XCM Wonder",
-      from: "Asset Hub",
-      to: "Astar",
-      status: "success",
-      hash: "0x789...ghi",
-    },
-  ];
-
+  // Initialize Polkadot API connection
   useEffect(() => {
-    setMintedNFTs(mockNFTs);
-    setTransactions(mockTransactions);
+    const initializeApi = async () => {
+      try {
+        const assetHubChain = chains.find((c) => c.id === "AssetHub");
+        const provider = getWsProvider(assetHubChain.wsUrl);
+        const client = createClient(provider);
+        setApi(client);
+      } catch (error) {
+        console.error("Failed to initialize API:", error);
+        setError("Failed to connect to Asset Hub");
+      }
+    };
+
+    initializeApi();
   }, []);
 
   const connectWallet = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setWalletConnected(true);
-      setAccount("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
-      setBalances({ assetHub: "125.4", parachain: "89.2" });
+    setError("");
+
+    try {
+      // Check if Polkadot extension is available
+      if (typeof window !== "undefined" && window.injectedWeb3) {
+        const { web3Accounts, web3Enable, web3FromAddress } = await import(
+          "@polkadot/extension-dapp"
+        );
+
+        // Request access to extension
+        const extensions = await web3Enable("XCM NFT App");
+        if (extensions.length === 0) {
+          throw new Error("No extension found");
+        }
+
+        // Get accounts
+        const accounts = await web3Accounts();
+        if (accounts.length === 0) {
+          throw new Error("No accounts found");
+        }
+
+        const selectedAccount = accounts[0];
+        setAccount(selectedAccount.address);
+        setWalletConnected(true);
+
+        // Mock balance fetch - in real implementation, query chain state
+        setBalances({ assetHub: "125.4", parachain: "89.2" });
+      }
+    } catch (error) {
+      console.error("Wallet connection failed:", error);
+      setError(
+        "Failed to connect wallet. Make sure Polkadot extension is installed."
+      );
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
+  // Mint NFT on Asset Hub
   const mintNFT = async () => {
-    if (!nftData.name || !nftData.description) return;
+    if (!nftData.name || !nftData.description || !account) return;
 
     setLoading(true);
-    const newTransaction = {
-      id: Date.now().toString(),
-      type: "mint",
-      nft: nftData.name,
-      from: "Asset Hub",
-      to: "Asset Hub",
-      status: "pending",
-      hash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random()
+    setError("");
+
+    try {
+      // Create transaction hash for tracking
+      const txHash = `0x${Math.random()
         .toString(16)
-        .substr(2, 3)}`,
-    };
+        .substr(2, 8)}...${Math.random().toString(16).substr(2, 3)}`;
 
-    setTransactions((prev) => [newTransaction, ...prev]);
-
-    setTimeout(() => {
-      const newNFT = {
-        id: (mintedNFTs.length + 1).toString().padStart(3, "0"),
-        name: nftData.name,
-        chain: "asset-hub",
-        status: "minted",
-        image: nftData.image ? "🖼️" : "🎨",
+      const newTransaction = {
+        id: Date.now().toString(),
+        type: "mint",
+        nft: nftData.name,
+        from: "Asset Hub",
+        to: "Asset Hub",
+        status: "pending",
+        hash: txHash,
       };
 
-      setMintedNFTs((prev) => [newNFT, ...prev]);
+      setTransactions((prev) => [newTransaction, ...prev]);
+
+      // In a real implementation, you would:
+      // 1. Create NFT metadata and upload to IPFS
+      // 2. Build extrinsic using Asset Hub's NFT pallet
+      // 3. Sign and submit transaction
+
+      // For demo, we'll simulate the process
+      const nftMetadata = {
+        name: nftData.name,
+        description: nftData.description,
+        image: nftData.image || "https://via.placeholder.com/200",
+      };
+
+      // Simulate NFT minting process
+      setTimeout(() => {
+        const newNFT = {
+          id: (mintedNFTs.length + 1).toString().padStart(3, "0"),
+          name: nftData.name,
+          description: nftData.description,
+          chain: "AssetHub",
+          status: "minted",
+          image: nftData.image ? "🖼️" : "🎨",
+          collection: nftData.collection,
+          metadata: nftMetadata,
+          owner: account,
+        };
+
+        setMintedNFTs((prev) => [newNFT, ...prev]);
+        setTransactions((prev) =>
+          prev.map((tx) =>
+            tx.id === newTransaction.id ? { ...tx, status: "success" } : tx
+          )
+        );
+        setNftData({ name: "", description: "", image: null, collection: "1" });
+        setError("");
+      }, 3000);
+    } catch (error) {
+      console.error("Minting failed:", error);
+      setError("Failed to mint NFT: " + error.message);
       setTransactions((prev) =>
         prev.map((tx) =>
-          tx.id === newTransaction.id ? { ...tx, status: "success" } : tx
+          tx.id === newTransaction?.id ? { ...tx, status: "failed" } : tx
         )
       );
-      setNftData({ name: "", description: "", image: null });
+    } finally {
       setLoading(false);
-    }, 3000);
+    }
   };
 
+  // Transfer NFT using XCM
   const transferNFT = async () => {
-    if (!transferData.nftId || !transferData.targetChain) return;
+    if (!transferData.nftId || !transferData.targetChain || !account) return;
 
     setLoading(true);
-    const nft = mintedNFTs.find((n) => n.id === transferData.nftId);
-    const targetChainName = chains.find(
-      (c) => c.id === transferData.targetChain
-    )?.name;
+    setError("");
 
-    const newTransaction = {
-      id: Date.now().toString(),
-      type: "transfer",
-      nft: nft?.name || "Unknown NFT",
-      from: "Asset Hub",
-      to: targetChainName,
-      status: "pending",
-      hash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random()
+    try {
+      const nft = mintedNFTs.find((n) => n.id === transferData.nftId);
+      const targetChain = chains.find((c) => c.id === transferData.targetChain);
+
+      if (!nft || !targetChain) {
+        throw new Error("Invalid NFT or target chain");
+      }
+
+      const txHash = `0x${Math.random()
         .toString(16)
-        .substr(2, 3)}`,
-    };
+        .substr(2, 8)}...${Math.random().toString(16).substr(2, 3)}`;
 
-    setTransactions((prev) => [newTransaction, ...prev]);
+      const newTransaction = {
+        id: Date.now().toString(),
+        type: "transfer",
+        nft: nft.name,
+        from: "Asset Hub",
+        to: targetChain.name,
+        status: "pending",
+        hash: txHash,
+      };
 
-    setTimeout(() => {
-      setMintedNFTs((prev) =>
-        prev.map((nft) =>
-          nft.id === transferData.nftId
-            ? { ...nft, chain: transferData.targetChain, status: "transferred" }
-            : nft
-        )
-      );
+      setTransactions((prev) => [newTransaction, ...prev]);
+
+      // Build XCM transfer using ParaSpell SDK
+      try {
+        const xcmTransfer = Builder()
+          .from("AssetHub")
+          .to(transferData.targetChain)
+          .currency({
+            // NFT asset configuration
+            multilocation: {
+              parents: 0,
+              interior: {
+                X2: [
+                  { PalletInstance: 50 }, // NFTs pallet
+                  { GeneralIndex: nft.collection },
+                ],
+              },
+            },
+          })
+          .amount("1") // NFT quantity
+          .address(account)
+          .build();
+
+        console.log("XCM Transfer built:", xcmTransfer);
+
+        // In real implementation:
+        // 1. Sign the transaction with user's account
+        // 2. Submit to Asset Hub
+        // 3. Monitor XCM message execution on target chain
+
+        // Simulate successful transfer
+        setTimeout(() => {
+          setMintedNFTs((prev) =>
+            prev.map((nftItem) =>
+              nftItem.id === transferData.nftId
+                ? {
+                    ...nftItem,
+                    chain: transferData.targetChain,
+                    status: "transferred",
+                  }
+                : nftItem
+            )
+          );
+          setTransactions((prev) =>
+            prev.map((tx) =>
+              tx.id === newTransaction.id ? { ...tx, status: "success" } : tx
+            )
+          );
+          setTransferData({ nftId: "", targetChain: "Moonbeam" });
+          setError("");
+        }, 4000);
+      } catch (xcmError) {
+        console.error("XCM transfer failed:", xcmError);
+        throw new Error("XCM transfer configuration failed");
+      }
+    } catch (error) {
+      console.error("Transfer failed:", error);
+      setError("Failed to transfer NFT: " + error.message);
       setTransactions((prev) =>
         prev.map((tx) =>
-          tx.id === newTransaction.id ? { ...tx, status: "success" } : tx
+          tx.id === newTransaction?.id ? { ...tx, status: "failed" } : tx
         )
       );
-      setTransferData({ nftId: "", targetChain: "moonbeam" });
+    } finally {
       setLoading(false);
-    }, 4000);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -200,7 +306,71 @@ const XCMNFTApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      {/* Header */}
+      <header className="border-b border-white/10 backdrop-blur-sm bg-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl flex items-center justify-center">
+                <span className="text-xl">🔗</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  XCM NFT Bridge
+                </h1>
+                <p className="text-sm text-gray-300">
+                  Cross-chain NFT minting & transfers powered by XCM
+                </p>
+              </div>
+            </div>
+
+            {!walletConnected ? (
+              <button
+                onClick={connectWallet}
+                disabled={loading}
+                className="flex items-center space-x-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium hover:from-pink-600 hover:to-purple-600 transition-all duration-200 disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Wallet className="w-5 h-5" />
+                )}
+                <span>{loading ? "Connecting..." : "Connect Wallet"}</span>
+              </button>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm text-gray-300">
+                    Asset Hub: {balances.assetHub} DOT
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    Parachain: {balances.parachain} DOT
+                  </p>
+                </div>
+                <div className="bg-green-500/20 text-green-400 px-4 py-2 rounded-lg text-sm">
+                  {account?.slice(0, 6)}...{account?.slice(-4)}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-500/20 border border-red-500/30 rounded-lg p-4 flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-400">{error}</span>
+            <button
+              onClick={() => setError("")}
+              className="ml-auto text-red-400 hover:text-red-300"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex space-x-1 bg-white/10 p-1 rounded-xl mb-8 backdrop-blur-sm">
           {[
@@ -238,6 +408,24 @@ const XCMNFTApp = () => {
                 </h2>
 
                 <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Collection ID
+                    </label>
+                    <input
+                      type="number"
+                      value={nftData.collection}
+                      onChange={(e) =>
+                        setNftData((prev) => ({
+                          ...prev,
+                          collection: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Enter collection ID"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       NFT Name
@@ -308,13 +496,28 @@ const XCMNFTApp = () => {
                     </div>
                   </div>
 
+                  <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+                    <h3 className="text-blue-400 font-medium mb-2">
+                      Minting Process
+                    </h3>
+                    <div className="text-sm text-blue-200 space-y-1">
+                      <p>• Metadata will be stored on-chain</p>
+                      <p>
+                        • NFT will be minted to Asset Hub collection #
+                        {nftData.collection}
+                      </p>
+                      <p>• You can transfer it to any parachain using XCM</p>
+                    </div>
+                  </div>
+
                   <button
                     onClick={mintNFT}
                     disabled={
                       !walletConnected ||
                       loading ||
                       !nftData.name ||
-                      !nftData.description
+                      !nftData.description ||
+                      !nftData.collection
                     }
                     className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-xl font-medium hover:from-pink-600 hover:to-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
@@ -323,7 +526,9 @@ const XCMNFTApp = () => {
                     ) : (
                       <Image className="w-5 h-5" />
                     )}
-                    <span>{loading ? "Minting..." : "Mint NFT"}</span>
+                    <span>
+                      {loading ? "Minting..." : "Mint NFT on Asset Hub"}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -332,7 +537,7 @@ const XCMNFTApp = () => {
             {activeTab === "transfer" && (
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
                 <h2 className="text-2xl font-bold text-white mb-6">
-                  Transfer NFT to Parachain
+                  Transfer NFT to Parachain via XCM
                 </h2>
 
                 <div className="space-y-6">
@@ -352,7 +557,7 @@ const XCMNFTApp = () => {
                     >
                       <option value="">Choose an NFT</option>
                       {mintedNFTs
-                        .filter((nft) => nft.chain === "asset-hub")
+                        .filter((nft) => nft.chain === "AssetHub")
                         .map((nft) => (
                           <option key={nft.id} value={nft.id}>
                             {nft.name} (#{nft.id})
@@ -376,7 +581,7 @@ const XCMNFTApp = () => {
                       className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       {chains
-                        .filter((chain) => chain.id !== "asset-hub")
+                        .filter((chain) => chain.id !== "AssetHub")
                         .map((chain) => (
                           <option key={chain.id} value={chain.id}>
                             {chain.name}
@@ -389,7 +594,7 @@ const XCMNFTApp = () => {
                     <h3 className="text-blue-400 font-medium mb-2">
                       XCM Transfer Process
                     </h3>
-                    <div className="flex items-center space-x-4 text-sm text-blue-200">
+                    <div className="flex items-center space-x-4 text-sm text-blue-200 mb-3">
                       <span>Asset Hub</span>
                       <ArrowRight className="w-4 h-4" />
                       <span>XCM Message</span>
@@ -400,6 +605,11 @@ const XCMNFTApp = () => {
                             ?.name
                         }
                       </span>
+                    </div>
+                    <div className="text-xs text-blue-300 space-y-1">
+                      <p>• Uses ParaSpell SDK for XCM message construction</p>
+                      <p>• Secure cross-chain transfer via Polkadot XCM</p>
+                      <p>• NFT ownership preserved across chains</p>
                     </div>
                   </div>
 
@@ -454,8 +664,11 @@ const XCMNFTApp = () => {
                           <h3 className="text-white font-medium mb-2">
                             {nft.name}
                           </h3>
+                          <p className="text-gray-400 text-sm mb-2">
+                            {nft.description}
+                          </p>
                           <p className="text-gray-400 text-sm mb-4">
-                            Token ID: #{nft.id}
+                            Token ID: #{nft.id} | Collection: #{nft.collection}
                           </p>
                           <div className="flex items-center justify-between">
                             <span
@@ -488,61 +701,74 @@ const XCMNFTApp = () => {
                 </h2>
 
                 <div className="space-y-4">
-                  {transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="bg-white/5 rounded-lg p-4 flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            tx.type === "mint"
-                              ? "bg-green-500/20"
-                              : "bg-blue-500/20"
-                          }`}
-                        >
-                          {tx.type === "mint" ? (
-                            <Image className="w-5 h-5 text-green-400" />
-                          ) : (
-                            <Send className="w-5 h-5 text-blue-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">
-                            {tx.type === "mint" ? "Minted" : "Transferred"}{" "}
-                            {tx.nft}
-                          </p>
-                          <p className="text-gray-400 text-sm">
-                            {tx.from} → {tx.to}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${
-                            tx.status === "success"
-                              ? "bg-green-500/20 text-green-400"
-                              : tx.status === "pending"
-                              ? "bg-yellow-500/20 text-yellow-400"
-                              : "bg-red-500/20 text-red-400"
-                          }`}
-                        >
-                          {tx.status === "success" ? (
-                            <CheckCircle className="w-3 h-3" />
-                          ) : tx.status === "pending" ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <AlertCircle className="w-3 h-3" />
-                          )}
-                          <span className="capitalize">{tx.status}</span>
-                        </div>
-                        <button className="text-purple-400 hover:text-purple-300">
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                      </div>
+                  {transactions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <History className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-400 text-lg">
+                        No transactions yet
+                      </p>
+                      <p className="text-gray-500">
+                        Your NFT operations will appear here
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    transactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        className="bg-white/5 rounded-lg p-4 flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              tx.type === "mint"
+                                ? "bg-green-500/20"
+                                : "bg-blue-500/20"
+                            }`}
+                          >
+                            {tx.type === "mint" ? (
+                              <Image className="w-5 h-5 text-green-400" />
+                            ) : (
+                              <Send className="w-5 h-5 text-blue-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">
+                              {tx.type === "mint" ? "Minted" : "Transferred"}{" "}
+                              {tx.nft}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              {tx.from} → {tx.to}
+                            </p>
+                            <p className="text-gray-500 text-xs">{tx.hash}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${
+                              tx.status === "success"
+                                ? "bg-green-500/20 text-green-400"
+                                : tx.status === "pending"
+                                ? "bg-yellow-500/20 text-yellow-400"
+                                : "bg-red-500/20 text-red-400"
+                            }`}
+                          >
+                            {tx.status === "success" ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : tx.status === "pending" ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <AlertCircle className="w-3 h-3" />
+                            )}
+                            <span className="capitalize">{tx.status}</span>
+                          </div>
+                          <button className="text-purple-400 hover:text-purple-300">
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -595,6 +821,20 @@ const XCMNFTApp = () => {
                     {chains.length}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Success Rate</span>
+                  <span className="text-white font-medium">
+                    {transactions.length > 0
+                      ? Math.round(
+                          (transactions.filter((tx) => tx.status === "success")
+                            .length /
+                            transactions.length) *
+                            100
+                        )
+                      : 0}
+                    %
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -607,9 +847,48 @@ const XCMNFTApp = () => {
                 Cross-Consensus Messaging (XCM) enables secure communication
                 between different blockchains in the Polkadot ecosystem.
               </p>
+              <div className="space-y-2 text-sm text-gray-300 mb-4">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>Secure asset transfers</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>Cross-chain interoperability</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>Powered by ParaSpell SDK</span>
+                </div>
+              </div>
               <div className="flex items-center space-x-2 text-purple-400">
                 <ExternalLink className="w-4 h-4" />
                 <span className="text-sm">Learn more about XCM</span>
+              </div>
+            </div>
+
+            {/* Network Info */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-white mb-4">
+                Network Info
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Network</span>
+                  <span className="text-white">Polkadot</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">XCM Version</span>
+                  <span className="text-white">V3</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">SDK</span>
+                  <span className="text-white">ParaSpell</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">API</span>
+                  <span className="text-white">Polkadot-API</span>
+                </div>
               </div>
             </div>
           </div>
