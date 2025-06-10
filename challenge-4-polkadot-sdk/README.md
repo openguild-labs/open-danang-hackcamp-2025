@@ -69,6 +69,8 @@ polkadot-omni-node --chain <path/to/chain_spec.json> --dev
 
 ## Submissions:
 
+Click on the image to watch the video.
+
 ### Successful Vested Transfer And Claiming Vested Tokens
 
 This simulation shows:
