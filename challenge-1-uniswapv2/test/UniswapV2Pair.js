@@ -1,5 +1,5 @@
-const chai = require('chai');
-const { expect } = chai;
+const { expect } = require('chai')
+const { ethers } = require('hardhat')
 const { ZeroAddress, utils, keccak256, solidityPacked, getCreate2Address } = require('ethers');
 const { expandTo18Decimals, getWallets, encodePrice, mineBlock } = require('./shared/utilities');
 
@@ -10,8 +10,8 @@ const MINIMUM_LIQUIDITY = BigInt('1000')
 
 
 
-describe('UniswapV2Pair', function() {
-  let factory;
+describe('UniswapV2Pair', function () {
+  let factoryV2;
   let token0;
   let token1;
   let pair;
@@ -20,56 +20,45 @@ describe('UniswapV2Pair', function() {
   let other;
 
   const network = require('hardhat').network;
-  beforeEach(async function() {
+  beforeEach(async function () {
+    // Get signers
+    [wallet, other] = await ethers.getSigners()
 
-    [wallet, other] = await ethers.getSigners();
+    // Deploy fresh factory
+    const Factory = await ethers.getContractFactory("UniswapV2Factory")
+    factoryV2 = await Factory.deploy(wallet.address)
 
-    let UniswapV2Pair;
-    if (hre.network.name == 'polkavm' || hre.network.name == 'ah') {
-      UniswapV2Pair = await ethers.getContractFactory("UniswapV2Pair", getWallets(1)[0]);
+    // Deploy fresh test tokens
+    const TestToken = await ethers.getContractFactory("TestERC20")
+    const tokenA = await TestToken.deploy("Test Token A", "TESTA", ethers.parseEther("10000"))
+    const tokenB = await TestToken.deploy("Test Token B", "TESTB", ethers.parseEther("10000"))
+
+    // Ensure token0 < token1 by address
+    const tokenAAddress = await tokenA.getAddress()
+    const tokenBAddress = await tokenB.getAddress()
+
+    if (tokenAAddress.toLowerCase() < tokenBAddress.toLowerCase()) {
+      token0 = tokenA
+      token1 = tokenB
     } else {
-      UniswapV2Pair = await ethers.getContractFactory("UniswapV2Pair");
+      token0 = tokenB
+      token1 = tokenA
     }
 
-    const ERC20 = await ethers.getContractFactory("ERC20");
-    token0 = await ERC20.deploy(TOTAL_SUPPLY);
-    await token0.waitForDeployment();
+    // Create pair
+    await factoryV2.createPair(await token0.getAddress(), await token1.getAddress())
+    const pairAddress = await factoryV2.getPair(await token0.getAddress(), await token1.getAddress())
 
-    token1 = await ERC20.deploy(TOTAL_SUPPLY);
-    await token1.waitForDeployment();
+    const PairContract = await ethers.getContractFactory("UniswapV2Pair")
+    pair = PairContract.attach(pairAddress)
 
-    let pairForCode = await UniswapV2Pair.deploy();
-    await pairForCode.waitForDeployment();
-
-    const UniswapV2Factory = await ethers.getContractFactory("UniswapV2Factory", wallet);
-    factory = await UniswapV2Factory.deploy(wallet.address);
-    await factory.waitForDeployment();
-    
-    let token0Address = await token0.getAddress();
-    let token1Address = await token1.getAddress();
-
-    [token0, token1] = token0Address < token1Address ? 
-    [token0, token1] : 
-    [token1, token0];
-
-    let first = await token0.getAddress();
-    let second = await token1.getAddress();
-
-    const bytecode = UniswapV2Pair.bytecode;
-    const initCodeHash = keccak256(bytecode);
-    let salt = keccak256(solidityPacked(['address', 'address'], [first, second]));
-    const create2Address = getCreate2Address(await factory.getAddress(), salt, initCodeHash);
-
-    await expect(factory.createPair(token0Address, token1Address)).to.emit(factory, "PairCreated")
-    .withArgs(await first, second, create2Address, 1n);
-
-    pair = await ethers.getContractAt("UniswapV2Pair", create2Address); 
-    expect(await pair.token0()).to.eq(first);
-    expect(await pair.token1()).to.eq(second);
-
+    // Set up other variables
+    this.wallet = wallet
+    this.other = other
+    provider = ethers.provider
   });
 
-  it('mint', async function() {
+  it('mint', async function () {
     const token0Amount = expandTo18Decimals(1);
     const pairAddress = await pair.getAddress();
     const token1Amount = expandTo18Decimals(4);
@@ -114,7 +103,7 @@ describe('UniswapV2Pair', function() {
   ].map(a => a.map(n => typeof n === 'string' ? BigInt(n) : expandTo18Decimals(n)));
 
   swapTestCases.forEach((swapTestCase, i) => {
-    it(`getInputPrice:${i}`, async function() {
+    it(`getInputPrice:${i}`, async function () {
       this.timeout(60000)
       const [swapAmount, token0Amount, token1Amount, expectedOutputAmount] = swapTestCase;
       await addLiquidity(token0Amount, token1Amount);
@@ -133,7 +122,7 @@ describe('UniswapV2Pair', function() {
   ].map(a => a.map(n => typeof n === 'string' ? BigInt(n) : expandTo18Decimals(n)));
 
   optimisticTestCases.forEach((optimisticTestCase, i) => {
-    it(`optimistic:${i}`, async function() {
+    it(`optimistic:${i}`, async function () {
       this.timeout(60000)
       const [outputAmount, token0Amount, token1Amount, inputAmount] = optimisticTestCase;
       await addLiquidity(token0Amount, token1Amount);
@@ -144,7 +133,7 @@ describe('UniswapV2Pair', function() {
     });
   });
 
-  it('swap:token0', async function() {
+  it('swap:token0', async function () {
     this.timeout(50000)
     const token0Amount = expandTo18Decimals(5);
     const token1Amount = expandTo18Decimals(10);
@@ -172,7 +161,7 @@ describe('UniswapV2Pair', function() {
     expect(await token1.balanceOf(wallet.address)).to.eq(totalSupplyToken1 - token1Amount + expectedOutputAmount);
   });
 
-  it('swap:token1', async function() {
+  it('swap:token1', async function () {
     this.timeout(50000)
     const token0Amount = expandTo18Decimals(5);
     const token1Amount = expandTo18Decimals(10);
@@ -200,7 +189,7 @@ describe('UniswapV2Pair', function() {
     expect(await token1.balanceOf(wallet.address)).to.eq(totalSupplyToken1 - token1Amount - swapAmount);
   });
 
-  it('burn', async function() {
+  it('burn', async function () {
     const token0Amount = expandTo18Decimals(3);
     const token1Amount = expandTo18Decimals(3);
     await addLiquidity(token0Amount, token1Amount);
@@ -229,47 +218,8 @@ describe('UniswapV2Pair', function() {
     expect(await token1.balanceOf(wallet.address)).to.eq(totalSupplyToken1 - BigInt(1000));
   });
 
-  // it('price{0,1}CumulativeLast', async function() {
-  //   const token0Amount = expandTo18Decimals(3);
-  //   const token1Amount = expandTo18Decimals(3);
-  //   await addLiquidity(token0Amount, token1Amount);
 
-  //   const reserves = await pair.getReserves();
-  //   const blockTimestamp = reserves[2];
-  //   console.log("blockTimestamp", blockTimestamp);
-  //   const network = require('hardhat').network;
-  //   await mineBlock(network.provider, blockTimestamp + BigInt(1));
-  //   console.log("mined block");
-  //   await pair.sync();
-
-  //   const initialPrice = encodePrice(token0Amount, token1Amount);
-  //   console.log("initialPrice", initialPrice);
-  //   expect(await pair.price0CumulativeLast()).to.eq(initialPrice[0]);
-  //   expect(await pair.price1CumulativeLast()).to.eq(initialPrice[1]);
-  //   const updatedReserves = await pair.getReserves();
-  //   expect(updatedReserves[2]).to.eq(blockTimestamp + BigInt(1));
-
-    // const swapAmount = expandTo18Decimals(3);
-    // await token0.transfer(await pair.getAddress(), swapAmount);
-    // await mineBlock(provider, blockTimestamp + 10);
-    // await pair.swap(0, expandTo18Decimals(1), wallet.address, '0x');
-
-    // expect(await pair.price0CumulativeLast()).to.eq(initialPrice[0] * BigInt(10));
-    // expect(await pair.price1CumulativeLast()).to.eq(initialPrice[1] * BigInt(10));
-    // const latestReserves = await pair.getReserves();
-    // expect(latestReserves[2]).to.eq(blockTimestamp + 10);
-
-    // await mineBlock(provider, blockTimestamp + 20);
-    // await pair.sync();
-
-    // const newPrice = encodePrice(expandTo18Decimals(6), expandTo18Decimals(2));
-    // expect(await pair.price0CumulativeLast()).to.eq(initialPrice[0]* bigInt(10) + newPrice[0] * BigInt(10));
-    // expect(await pair.price1CumulativeLast()).to.eq(initialPrice[1] * BigInt(10) + (newPrice[1] * BigInt(10)));
-    // const finalReserves = await pair.getReserves();
-    // expect(finalReserves[2]).to.eq(blockTimestamp + 20);
-  // });
-
-  it('feeTo:off', async function() {
+  it('feeTo:off', async function () {
     this.timeout(70000)
     const token0Amount = expandTo18Decimals(1000);
     const token1Amount = expandTo18Decimals(1000);
@@ -286,10 +236,10 @@ describe('UniswapV2Pair', function() {
     expect(await pair.totalSupply()).to.eq(MINIMUM_LIQUIDITY);
   });
 
-  it('feeTo:on', async function() {
+  it('feeTo:on', async function () {
     this.timeout(140000)
 
-    await factory.setFeeTo(other.address);
+    await factoryV2.setFeeTo(other.address);
 
     const token0Amount = expandTo18Decimals(1000);
     const token1Amount = expandTo18Decimals(1000);

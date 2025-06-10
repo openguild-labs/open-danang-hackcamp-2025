@@ -1,45 +1,33 @@
 require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-ignition");
-
-require("hardhat-resolc");
-require("hardhat-revive-node");
-
 require("dotenv").config();
-console.log(process.env.LOCAL_PRIV_KEY);
-console.log(process.env.AH_PRIV_KEY);
-// require("hardhat-revive-node");
+
 /** @type import('hardhat/config').HardhatUserConfig */
-const config = {
-  solidity: "0.8.19",
-  resolc: {
-        compilerSource: 'npm',
+module.exports = {
+  solidity: {
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
   },
   networks: {
     hardhat: {
-      polkavm: true,
-      nodeConfig: {
-        nodeBinaryPath: './binaries/substrate-node',
-        rpcPort: 8000,
-        dev: true,
-      },
-      adapterConfig: {
-        adapterBinaryPath: './binaries/eth-rpc',
-        dev: true,
-      },
+      chainId: 1337
     },
-    polkavm: {
-      polkavm: true,   
-      url: 'http://127.0.0.1:8545',
-      accounts: [process.env.LOCAL_PRIV_KEY, process.env.AH_PRIV_KEY],
+    paseo: {
+      url: process.env.PASEO_RPC_URL || "https://paseo-asset-hub-rpc.polkadot.io",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 1000 // Paseo Asset Hub chain ID
     },
-
-    paseoAssetHub: { 
-      polkavm: true,
-      url: "https://testnet-passet-hub-eth-rpc.polkadot.io/",
-      accounts: [process.env.AH_PRIV_KEY],
-    },
+    westend: {
+      url: process.env.WESTEND_RPC_URL || "https://westend-asset-hub-rpc.polkadot.io",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 1000
+    }
   },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
+  }
 };
-
-
-module.exports = config;

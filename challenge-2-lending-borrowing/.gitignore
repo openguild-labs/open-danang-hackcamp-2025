@@ -24,3 +24,6 @@ ignition/deployments/chain-westend
 cache-pvm
 artifacts-pvm
 typechain-types
+
+frontend/.next/*
+frontend/.next

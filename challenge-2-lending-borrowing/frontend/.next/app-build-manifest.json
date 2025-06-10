@@ -1,0 +1,54 @@
+{
+  "pages": {
+    "/wallet/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/wallet/page.css",
+      "static/chunks/app/wallet/page.js"
+    ],
+    "/wallet/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/wallet/loading.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/send-transaction/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/send-transaction/page.css",
+      "static/chunks/app/send-transaction/page.js"
+    ],
+    "/send-transaction/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/send-transaction/loading.js"
+    ],
+    "/write-contract/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/write-contract/page.css",
+      "static/chunks/app/write-contract/page.js"
+    ],
+    "/write-contract/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/write-contract/loading.js"
+    ],
+    "/mint-redeem-lst-bifrost/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/mint-redeem-lst-bifrost/page.css",
+      "static/chunks/app/mint-redeem-lst-bifrost/page.js"
+    ],
+    "/mint-redeem-lst-bifrost/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/mint-redeem-lst-bifrost/loading.js"
+    ]
+  }
+}

@@ -33,7 +33,7 @@ git clone https://github.com/openguild-labs/open-danang-hackcamp-2025.git
 Go to **Participant Registration** section and register to be the workshop participants. Add the below to the list, replace any placeholder with your personal information.
 
 ```
-| 🦄 | Name | Github username | Your current occupation |
+| 🦄 | Aji Guruh Prasetyo | ajiguruhprasetyo | Blockchain Developer |
 ```
 
 - Step 5: `Commit` your code and push to the forked Github repository
@@ -82,7 +82,7 @@ Link : https://blockscout-passet-hub.parity-testnet.parity.io/
 
 + ETH - EVM-compatible RPC: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
 
-+ ChainID: `0x190f1b45`
++ ChainID: `420420421`
 
 
 
