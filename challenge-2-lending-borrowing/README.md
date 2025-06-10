@@ -76,7 +76,7 @@ A decentralized lending and borrowing application built for the Polkadot ecosyst
 
 - **Network Name**: Paseo Asset Hub
 - **RPC URL**: https://testnet-passet-hub-eth-rpc.polkadot.io/
-- **Chain ID**: 0x190f1b45 (419430469)
+- **Chain ID**: 420420421 
 - **Explorer**: https://blockscout-passet-hub.parity-testnet.parity.io/
 - **Faucet**: https://faucet.polkadot.io/?parachain=1111
 

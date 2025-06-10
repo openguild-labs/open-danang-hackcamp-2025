@@ -31,7 +31,7 @@ Link: https://blockscout-passet-hub.parity-testnet.parity.io/
 ETH - EVM-compatible RPC: https://testnet-passet-hub-eth-rpc.polkadot.io/
 
 ### ChainID
-0x190f1b45
+420420421
 
 ## Quick Start
 
@@ -89,7 +89,7 @@ Add local network to MetaMask:
 For Paseo Testnet:
 - **Network Name**: `Paseo Asset Hub`
 - **RPC URL**: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
-- **Chain ID**: `0x190f1b45` (420417733)
+- **Chain ID**: `420420421` (420420421)
 - **Currency Symbol**: `PAS`
 
 ### 6. Use the DEX
