@@ -69,7 +69,7 @@ polkadot-omni-node --chain <path/to/chain_spec.json> --dev
 
 ## Submissions:
 
-Click on the image to watch the video.
+### Click on the below images to watch the video.
 
 ### Successful Vested Transfer And Claiming Vested Tokens
 
@@ -79,11 +79,23 @@ This simulation shows:
 
 - a recipient can claim tokens that have vested over time. It corresponds to `claim_works` in `tests.rs`.
 
+Video:
+
+```
+https://youtu.be/qiq1HjmwqoA
+```
+
 [![Successful Vested Transfer And Claiming Vested Tokens](https://img.youtube.com/vi/qiq1HjmwqoA/maxresdefault.jpg)](https://youtu.be/qiq1HjmwqoA)
 
 ### Invalid Vesting Schedule Parameters
 
 This simulation ensures that a `vested_transfer` will fail if the schedule has a period or period count of zero. It corresponds to `vested_transfer_fails_if_zero_period_or_count` in `tests.rs`.
+
+Video:
+
+```
+https://youtu.be/AbTQ29Ja5MY
+```
 
 [![Invalid Vesting Schedule Parameters](https://img.youtube.com/vi/AbTQ29Ja5MY/maxresdefault.jpg)](https://youtu.be/AbTQ29Ja5MY)
 
@@ -91,10 +103,22 @@ This simulation ensures that a `vested_transfer` will fail if the schedule has a
 
 This simulation shows that a privileged account (Root origin) can update the vesting schedules for any account. It corresponds to `update_vesting_schedules_works` in `tests.rs`.
 
+Video:
+
+```
+https://youtu.be/OebEBDlAetk
+```
+
 [![Updating Vesting Schedules (Sudo)](https://img.youtube.com/vi/OebEBDlAetk/maxresdefault.jpg)](https://youtu.be/OebEBDlAetk)
 
 ### Claiming with Multiple Schedules
 
 This simulation shows the claim logic when an account has multiple, overlapping vesting schedules. It corresponds to `multiple_vesting_schedule_claim_works` in `tests.rs`.
+
+Video:
+
+```
+https://youtu.be/GQZQAUFtbQw
+```
 
 [![Claiming with Multiple Schedules](https://img.youtube.com/vi/GQZQAUFtbQw/maxresdefault.jpg)](https://youtu.be/GQZQAUFtbQw)
