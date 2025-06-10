@@ -1,4 +1,4 @@
-// File: D:\DreamTeam\Polkadot\open-danang-hackcamp-2025\challenge-1-uniswapv2\frontend\app\page.tsx
+// File: D:\Workspace\Polkadot\open-danang-hackcamp-2025\challenge-1-uniswapv2\frontend\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
