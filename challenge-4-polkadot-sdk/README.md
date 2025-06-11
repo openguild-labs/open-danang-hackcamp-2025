@@ -24,7 +24,7 @@ NativePool provides a service where people can deposit native token and they wil
 ## Submission Requirements
 
 - [x] Finish `pallet-vesting` runtime
-- [x] Finish `pallet-native-pool` runtime
+- [x] Finish `pallet-native-pools` runtime
 - [x] Finish mocks and tests
 - [x] Record a video that run/simulate the logic on Polkadot JS explorer.
 
@@ -72,7 +72,7 @@ polkadot-omni-node --chain <path/to/chain_spec.json> --dev
 
 ### Test cases all pass
 
-[![Tests passed](https://drive.google.com/file/d/1_1PWkrvosrhVsRXEmzoKfoVbo8vzYYPN/view?usp=sharing)]
+![Vesting](https://drive.google.com/uc?export=view&id=1_1PWkrvosrhVsRXEmzoKfoVbo8vzYYPN)
 
 Add additional test case for `force_remove_vesting_schedule`
 
@@ -185,6 +185,18 @@ https://youtu.be/OebEBDlAetk
 
 [![Updating Vesting Schedules (Sudo)](https://img.youtube.com/vi/OebEBDlAetk/maxresdefault.jpg)](https://youtu.be/OebEBDlAetk)
 
+### Force remove vesting schedules
+
+This simulation shows the logic when force remove vesting schedules. It corresponds to `force_remove_vesting_schedule_works` in `tests.rs`.
+
+Video:
+
+```
+https://youtu.be/_Dn5y5Ns4tU
+```
+
+[![Force remove vesting schedules](https://img.youtube.com/vi/_Dn5y5Ns4tU/maxresdefault.jpg)](https://youtu.be/_Dn5y5Ns4tU)
+
 ### Claiming with Multiple Schedules
 
 This simulation shows the claim logic when an account has multiple, overlapping vesting schedules. It corresponds to `multiple_vesting_schedule_claim_works` in `tests.rs`.
@@ -201,4 +213,4 @@ https://youtu.be/GQZQAUFtbQw
 
 ### Test cases pass
 
-[![Tests passed](https://drive.google.com/file/d/1_1PWkrvosrhVsRXEmzoKfoVbo8vzYYPN/view?usp=sharing)]
+![Native Pools Test](https://drive.google.com/uc?export=view&id=1Ru212gEM_lH6zcg-6XTa5vm41xGOxUFM)
