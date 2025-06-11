@@ -1,0 +1,7 @@
+{
+  "/page": "app/page.js",
+  "/wallet/page": "app/wallet/page.js",
+  "/send-transaction/page": "app/send-transaction/page.js",
+  "/mint-redeem-lst-bifrost/page": "app/mint-redeem-lst-bifrost/page.js",
+  "/write-contract/page": "app/write-contract/page.js"
+}
