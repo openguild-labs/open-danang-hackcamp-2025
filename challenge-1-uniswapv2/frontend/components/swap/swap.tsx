@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowDownUp, Settings } from "lucide-react"
+import { ArrowDownUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TokenInput } from "./token-input"
@@ -27,7 +27,6 @@ export function SwapComponent() {
     const [toToken, setToToken] = useState<Token>(defaultTokens[1])
     const [fromAmount, setFromAmount] = useState<string>("")
     const [toAmount, setToAmount] = useState<string>("")
-    const [showSettings, setShowSettings] = useState(false)
     const [isSwapping, setIsSwapping] = useState(false)
 
     const handleSwapTokens = () => {
@@ -55,18 +54,8 @@ export function SwapComponent() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Swap</h2>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="h-8 w-8 p-0"
-                    >
-                        <Settings className="h-4 w-4" />
-                    </Button>
+                    <SwapSettings />
                 </div>
-
-                {/* Settings Panel */}
-                {showSettings && <SwapSettings />}
 
                 {/* From Token */}
                 <TokenInput
