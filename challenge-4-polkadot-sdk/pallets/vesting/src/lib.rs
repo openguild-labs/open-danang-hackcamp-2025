@@ -50,9 +50,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, Balance: AtLeast32Bit + MaxEncodedLen + C
 {
 	/// Returns the total amount to be vested
 	pub fn total_amount(&self) -> Option<Balance> {
-		// TODO: Calculate the total amount by multiplying per_period by period_count
-		// Hint: Use checked_mul to avoid overflow and return None if overflow occurs
-		todo!()
+		self.per_period.checked_mul(&Balance::from(self.period_count))
 	}
 
 	/// Linear vesting schedule
@@ -68,27 +66,39 @@ impl<BlockNumber: AtLeast32Bit + Copy, Balance: AtLeast32Bit + MaxEncodedLen + C
 	
 	/// Returns the vested amount at the given block
 	pub fn vested_amount<BlockNumberToBalance: Convert<BlockNumber, Balance>>(&self, now: BlockNumber) -> Balance {
-		// TODO: Implement vested amount calculation
-		// 1. If vesting hasn't started (now < self.start), return zero
-		// 2. Calculate elapsed blocks since start
-		// 3. Calculate how many complete periods have passed (elapsed / period)
-		// 4. Cap the periods at period_count
-		// 5. Multiply periods by per_period amount
-		// Hint: Use saturating operations to avoid overflow
-		todo!()
+		// If the vesting hasn't started yet, nothing is vested
+		if now < self.start {
+			return Balance::zero();
+		}
+
+		// Calculate how many complete periods have passed
+		let elapsed = now.saturating_sub(self.start);
+		let periods_passed = if self.period.is_zero() {
+			// If period is zero, all tokens are immediately vested
+			BlockNumber::from(self.period_count)
+		} else {
+			let passed = elapsed / self.period;
+			core::cmp::min(passed, BlockNumber::from(self.period_count))
+		};
+
+		// Convert periods_passed back to Balance for multiplication
+		self.per_period.saturating_mul(BlockNumberToBalance::convert(periods_passed))
 	}
 
 	/// Returns the remaining locked amount at the given block
 	pub fn locked_amount<BlockNumberToBalance: Convert<BlockNumber, Balance>>(&self, now: BlockNumber) -> Balance {
-		// TODO: Calculate locked amount
-		// Hint: locked_amount = total_amount - vested_amount
-		todo!()
+		if let Some(total) = self.total_amount() {
+			total.saturating_sub(self.vested_amount::<BlockNumberToBalance>(now))
+		} else {
+			Balance::zero()
+		}
 	}
+	pub fn is_valid_start_block<>(&self, current_block: BlockNumber) -> bool {
 
-	pub fn is_valid_start_block(&self, current_block: BlockNumber) -> bool {
-		// TODO: Validate that the start block is in the future
-		// Return true if start > current_block
-		todo!()
+		if self.start > current_block {
+			return true;
+		}
+		return false;
 	}
 
 }
@@ -142,6 +152,10 @@ pub mod pallet {
 		TooManyVestingSchedules,
 		/// The vested transfer amount is too low
 		AmountLow,
+		/// Failed because the maximum vesting schedules was exceeded
+		MaxVestingSchedulesExceeded,
+		/// Vesting schedule not found
+		VestingScheduleNotFound,
 		/// Not vested
 		NotVested,
 		/// Invalid vesting index
@@ -168,11 +182,9 @@ pub mod pallet {
 			dest: T::AccountId,
 			schedule: VestingScheduleOf<T>,
 		) -> DispatchResult {
-			// TODO: Implement vested_transfer extrinsic
-			// 1. Ensure the origin is signed
-			// 2. Call do_vested_transfer helper function
-			// Hint: Use ensure_signed(origin)? to get the sender
-			todo!()
+			let who = ensure_signed(origin)?;
+			Self::do_vested_transfer(&who, &dest, schedule)?;
+			Ok(())
 		}
 
 		/// Claim vested tokens
@@ -182,18 +194,19 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		#[pallet::weight({10_000})]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
-			// TODO: Implement claim extrinsic
-			// 1. Ensure the origin is signed
-			// 2. Update the lock for the account
-			// 3. If locked amount is zero, remove the lock entirely
-			// Hint: Use Self::update_lock() and T::Currency::remove_lock()
-			todo!()
-		}
+			let who = ensure_signed(origin)?;
+			let locked_amount = Self::update_lock(&who)?;
+			
+			if locked_amount.is_zero() {
+				T::Currency::remove_lock(VESTING_ID, &who);
+			}
 
+			Ok(())
+		}
 
 		/// Update vesting schedules
 		///
-		/// The dispatch origin for this call must be _Root_.
+		/// The dispatch origin for this call must be _Signed_.
 		///
 		/// - `schedules`: The new vesting schedules
 		///
@@ -204,16 +217,23 @@ pub mod pallet {
 			who: T::AccountId,
 			schedules: Vec<VestingScheduleOf<T>>,
 		) -> DispatchResult {
-			// TODO: Implement update_vesting_schedules extrinsic
-			// 1. Ensure the origin is root
-			// 2. Convert schedules Vec to BoundedVec
-			// 3. Calculate total locked amount for validation
-			// 4. Ensure account has enough balance
-			// 5. Update storage and locks
-			// Hint: Use ensure_root(origin)? and try_into() for BoundedVec conversion
-			todo!()
-		}
+			ensure_root(origin)?;
+			
+			let bounded_schedules: BoundedVec<_, T::MaxVestingSchedules> = schedules
+				.try_into()
+				.map_err(|_| Error::<T>::TooManyVestingSchedules)?;
 
+			let total_amount = Self::calculate_total_locked_amount(&bounded_schedules)?;
+
+			// Ensure the account has enough balance for all schedules
+			let free_balance = T::Currency::free_balance(&who);
+			ensure!(free_balance >= total_amount, Error::<T>::InsufficientBalanceToLock);
+
+			VestingSchedules::<T>::insert(&who, &bounded_schedules);
+			Self::update_lock(&who)?;
+
+			Ok(())
+		}
 
 		/// Update a specific vesting schedule
 		///
@@ -231,15 +251,26 @@ pub mod pallet {
 			index: u32,
 			schedule: VestingScheduleOf<T>,
 		) -> DispatchResult {
-			// TODO: Implement update_vesting_schedule extrinsic
-			// 1. Ensure the origin is root
-			// 2. Validate the new schedule (period > 0, period_count > 0, per_period > 0)
-			// 3. Use VestingSchedules::<T>::try_mutate to update the specific schedule
-			// 4. Update the lock after modifying the schedule
-			// Hints:
-			// - Use get_mut() to get mutable reference to the schedule at index
-			// - Return InvalidVestingIndex error if index is out of bounds
-			todo!()
+			ensure_root(origin)?;
+
+			// Validate the new schedule
+			ensure!(!schedule.period.is_zero(), Error::<T>::ZeroVestingPeriod);
+			ensure!(schedule.period_count > 0, Error::<T>::ZeroVestingPeriodCount);
+			ensure!(!schedule.per_period.is_zero(), Error::<T>::AmountLow);
+
+			VestingSchedules::<T>::try_mutate(&who, |schedules| -> DispatchResult {
+				let schedule_mut = schedules
+					.get_mut(index as usize)
+					.ok_or(Error::<T>::InvalidVestingIndex)?;
+				
+				*schedule_mut = schedule.clone();
+
+				// Update the lock after modifying the schedule
+				Self::update_lock(&who)?;
+
+
+				Ok(())
+			})
 		}
 
 		/// Force remove a vesting schedule
@@ -255,19 +286,21 @@ pub mod pallet {
 			who: T::AccountId,
 			schedule_index: u32,
 		) -> DispatchResult {
-			// TODO: Implement force_remove_vesting_schedule extrinsic
-			// 1. Ensure the origin is root
-			// 2. Use VestingSchedules::<T>::try_mutate to modify the schedules
-			// 3. Validate the schedule_index is within bounds
-			// 4. Remove the schedule at the given index
-			// 5. If no schedules remain, remove the lock entirely
-			// 6. Otherwise, update the lock with remaining schedules
-			// Hints:
-			// - Use schedules.remove(index) to remove at specific index
-			// - Use T::Currency::remove_lock() when schedules is empty
-			todo!()
+			ensure_root(origin)?;
+
+			VestingSchedules::<T>::try_mutate(&who, |schedules| -> DispatchResult {
+				ensure!((schedule_index as usize) < schedules.len(), Error::<T>::InvalidVestingIndex);
+				schedules.remove(schedule_index as usize);
+				
+				if schedules.is_empty() {
+					T::Currency::remove_lock(VESTING_ID, &who);
+				} else {
+					Self::update_lock(&who)?;
+				}
+
+				Ok(())
+			})
 		}
-		
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -277,62 +310,98 @@ pub mod pallet {
 			to: &T::AccountId,
 			schedule: VestingScheduleOf<T>,
 		) -> DispatchResult {
-			// TODO: Implement the core vested transfer logic
-			// 1. Get current block number
-			// 2. Validate the schedule (period > 0, period_count > 0, valid start block)
-			// 3. Calculate total amount and validate minimum transfer
-			// 4. Check sender has enough balance
-			// 5. Transfer the tokens
-			// 6. Add schedule to storage
-			// 7. Update locks
-			// Hints:
-			// - Use frame_system::Pallet::<T>::block_number() for current block
-			// - Use T::Currency::transfer() for token transfer
-			// - Use VestingSchedules::<T>::try_mutate() to update storage
-			todo!()
-		}
+			let current_block = frame_system::Pallet::<T>::block_number();
+			// Validate the schedule
+			ensure!(schedule.is_valid_start_block(current_block), Error::<T>::InvalidVestingStart);
+			ensure!(!schedule.period.is_zero(), Error::<T>::ZeroVestingPeriod);
+			ensure!(schedule.period_count > 0, Error::<T>::ZeroVestingPeriodCount);
+			ensure!(!schedule.per_period.is_zero(), Error::<T>::AmountLow);
 
+			let total_amount = schedule.total_amount().ok_or(Error::<T>::ArithmeticOverflow)?;
+			ensure!(total_amount >= T::MinVestedTransfer::get(), Error::<T>::AmountLow);
+
+			// Check if the sender has enough balance
+			ensure!(
+				T::Currency::free_balance(from) >= total_amount,
+				Error::<T>::InsufficientBalanceToLock
+			);
+
+			// Transfer the amount
+			T::Currency::transfer(from, to, total_amount, ExistenceRequirement::AllowDeath)?;
+
+			// Add the vesting schedule
+			VestingSchedules::<T>::try_mutate(to, |schedules| -> DispatchResult {
+				schedules
+					.try_push(schedule.clone())
+					.map_err(|_| Error::<T>::TooManyVestingSchedules)?;
+				Ok(())
+			})?;
+
+			// Update the lock
+			Self::update_lock(to)?;
+
+
+			Ok(())
+		}
 
 		/// Update the lock amount for an account
 		fn update_lock(who: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
-			// TODO: Implement lock update logic
-			// 1. Get all vesting schedules for the account
-			// 2. Get current block number
-			// 3. Calculate total locked amount across all schedules
-			// 4. Set the lock using T::Currency::set_lock()
-			// 5. Return the total locked amount
-			// Hint: Use VESTING_ID as the lock identifier
-			todo!()
+			let schedules = VestingSchedules::<T>::get(who);
+			let now = frame_system::Pallet::<T>::block_number();
+
+			let total_locked = schedules
+				.iter()
+				.map(|schedule| schedule.locked_amount::<T::BlockNumberToBalance>(now))
+				.fold(BalanceOf::<T>::zero(), |acc, amount| acc.saturating_add(amount));
+
+			if !total_locked.is_zero() {
+				T::Currency::set_lock(
+					VESTING_ID,
+					who,
+					total_locked,
+					WithdrawReasons::except(WithdrawReasons::TRANSACTION_PAYMENT),
+				);
+			}
+
+			Ok(total_locked)
 		}
 
 		/// Calculate the total locked amount for a set of schedules
 		fn calculate_total_locked_amount(
 			schedules: &BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
 		) -> Result<BalanceOf<T>, DispatchError> {
-			// TODO: Calculate total locked amount
-			// 1. Get current block number
-			// 2. Iterate through schedules and sum locked amounts
-			// 3. Use checked arithmetic to avoid overflow
-			// Hint: Use try_fold() for safe accumulation
-			todo!()
+			let now = frame_system::Pallet::<T>::block_number();
+			
+			let total = schedules
+				.iter()
+				.try_fold(BalanceOf::<T>::zero(), |acc, schedule| {
+					let locked = schedule.locked_amount::<T::BlockNumberToBalance>(now);
+					acc.checked_add(&locked).ok_or(Error::<T>::ArithmeticOverflow)
+				})?;
+
+			Ok(total)
 		}
 
 		/// Get vested amount for an account
 		pub fn vested_balance(who: &T::AccountId) -> BalanceOf<T> {
-			// TODO: Calculate total vested balance
-			// 1. Get all schedules for the account
-			// 2. Sum up vested amounts from all schedules
-			// Hint: Use fold() to accumulate vested amounts
-			todo!()
+			let schedules = VestingSchedules::<T>::get(who);
+			let now = frame_system::Pallet::<T>::block_number();
+
+			schedules
+				.iter()
+				.map(|schedule| schedule.vested_amount::<T::BlockNumberToBalance>(now))
+				.fold(BalanceOf::<T>::zero(), |acc, amount| acc.saturating_add(amount))
 		}
 
 		/// Get locked balance for an account
 		pub fn locked_balance(who: &T::AccountId) -> BalanceOf<T> {
-			// TODO: Calculate total locked balance
-			// 1. Get all schedules for the account
-			// 2. Sum up locked amounts from all schedules
-			// Hint: Similar to vested_balance but use locked_amount()
-			todo!()
+			let schedules = VestingSchedules::<T>::get(who);
+			let now = frame_system::Pallet::<T>::block_number();
+
+			schedules
+				.iter()
+				.map(|schedule| schedule.locked_amount::<T::BlockNumberToBalance>(now))
+				.fold(BalanceOf::<T>::zero(), |acc, amount| acc.saturating_add(amount))
 		}
 	}
 }
