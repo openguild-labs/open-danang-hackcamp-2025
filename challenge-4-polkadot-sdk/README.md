@@ -23,9 +23,10 @@ NativePool provides a service where people can deposit native token and they wil
 
 ## Submission Requirements
 
-- [ x ] Finish `pallet-vesting`/ `pallet-native-pool` runtime
-- [ x ] Finish mocks and tests
-- [ x ] Record a video that run/simulate the logic on Polkadot JS explorer.
+- [x] Finish `pallet-vesting` runtime
+- [x] Finish `pallet-native-pool` runtime
+- [x] Finish mocks and tests
+- [x] Record a video that run/simulate the logic on Polkadot JS explorer.
 
 ## How to run minimal template
 
@@ -67,7 +68,80 @@ sealing a new block every 3 seconds), with a minimal template runtime chain spec
 polkadot-omni-node --chain <path/to/chain_spec.json> --dev
 ```
 
-## Submissions:
+## Submissions for vesting pallets
+
+### Test cases all pass
+
+[![Tests passed](https://drive.google.com/file/d/1_1PWkrvosrhVsRXEmzoKfoVbo8vzYYPN/view?usp=sharing)]
+
+Add additional test case for `force_remove_vesting_schedule`
+
+```
+#[test]
+fn force_remove_vesting_schedule_works() {
+	ExtBuilder::build().execute_with(|| {
+		System::set_block_number(1);
+		// Create two vesting schedules
+		let schedule1 = VestingSchedule {
+			start: 2u64,
+			period: 10u64,
+			period_count: 3u32,
+			per_period: 100u64,
+		}; // total=300
+		let schedule2 = VestingSchedule {
+			start: 5u64,
+			period: 5u64,
+			period_count: 4u32,
+			per_period: 50u64,
+		}; // total=200
+
+		// Create vesting schedules for BOB
+		assert_ok!(Vesting::vested_transfer(RuntimeOrigin::signed(ALICE), BOB, schedule1));
+		assert_ok!(Vesting::vested_transfer(RuntimeOrigin::signed(ALICE), BOB, schedule2.clone()));
+
+		// Verify initial state
+		let total_transferred = 300 + 200;
+		assert_eq!(PalletBalances::free_balance(&BOB), total_transferred);
+		let initial_schedules = VestingSchedules::<Runtime>::get(&BOB);
+		assert_eq!(initial_schedules.len(), 2);
+
+		// Try to remove schedule with non-root origin (should fail)
+		assert_noop!(
+			Vesting::force_remove_vesting_schedule(RuntimeOrigin::signed(ALICE), BOB, 0),
+			DispatchError::BadOrigin
+		);
+
+		// Try to remove schedule with invalid index (should fail)
+		assert_noop!(
+			Vesting::force_remove_vesting_schedule(RuntimeOrigin::root(), BOB, 2),
+			Error::<Runtime>::InvalidVestingIndex
+		);
+
+		// Remove first schedule (index 0)
+		assert_ok!(Vesting::force_remove_vesting_schedule(RuntimeOrigin::root(), BOB, 0));
+
+		// Verify state after removal
+		let remaining_schedules = VestingSchedules::<Runtime>::get(&BOB);
+		assert_eq!(remaining_schedules.len(), 1);
+		assert_eq!(remaining_schedules[0], schedule2);
+
+		// Verify lock amount is updated
+		let locks = PalletBalances::locks(&BOB);
+		assert_eq!(locks[0].amount, 200); // Only schedule2 remains (200 total)
+
+		// Remove second schedule (index 0 since we removed the first one)
+		assert_ok!(Vesting::force_remove_vesting_schedule(RuntimeOrigin::root(), BOB, 0));
+
+		// Verify all schedules are removed
+		let final_schedules = VestingSchedules::<Runtime>::get(&BOB);
+		assert_eq!(final_schedules.len(), 0);
+
+		// Verify lock is removed
+		let final_locks = PalletBalances::locks(&BOB);
+		assert_eq!(final_locks.len(), 0);
+	});
+}
+```
 
 ### Click on the below images to watch the video.
 
@@ -122,3 +196,9 @@ https://youtu.be/GQZQAUFtbQw
 ```
 
 [![Claiming with Multiple Schedules](https://img.youtube.com/vi/GQZQAUFtbQw/maxresdefault.jpg)](https://youtu.be/GQZQAUFtbQw)
+
+## Submissions for native_pools pallets
+
+### Test cases pass
+
+[![Tests passed](https://drive.google.com/file/d/1_1PWkrvosrhVsRXEmzoKfoVbo8vzYYPN/view?usp=sharing)]
