@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/kakooza/Documents/buidl/base-batches/danang/open-danang-hackcamp-2025/challenge-1-uniswapv2/frontend/app/layout\":[\"static/media/176b159565394c49-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"

@@ -11,8 +11,8 @@ const unbounded = Unbounded({
 })
 
 export const metadata: Metadata = {
-  title: "DOT UI kit",
-  description: "a UI kit for Polkadot DApps",
+  title: "DEXERT - Uniswap V2",
+  description: "Decentralized exchange on Polkadot using Uniswap V2",
 };
 
 export default function RootLayout({

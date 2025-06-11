@@ -16,6 +16,7 @@ const config = {
   },
   networks: {
     hardhat: {
+      blockGasLimit: 30000000, // Increase gas limit,
       polkavm: true,
       nodeConfig: {
         nodeBinaryPath: './binaries/substrate-node',
@@ -30,7 +31,7 @@ const config = {
     polkavm: {
       polkavm: true,   
       url: 'http://127.0.0.1:8545',
-      accounts: [process.env.LOCAL_PRIV_KEY, process.env.AH_PRIV_KEY],
+      accounts: [process.env.AH_PRIV_KEY],
     },
 
     paseoAssetHub: { 
