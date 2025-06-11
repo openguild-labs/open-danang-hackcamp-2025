@@ -24,3 +24,5 @@ ignition/deployments/chain-westend
 cache-pvm
 artifacts-pvm
 typechain-types
+
+.env
