@@ -20,8 +20,8 @@ const Header = () => {
                         priority
                     />
                 </Link>
-                <Link className="text-sm underline underline-offset-4 self-center ease-linear duration-200 hover:scale-90" href="/token-vesting">Swap</Link>
-                <Link className="text-sm underline underline-offset-4 self-center ease-linear duration-200 hover:scale-90" href="/yield-farming">Liquidity Pool</Link>
+                <Link className="text-sm underline underline-offset-4 self-center ease-linear duration-200 hover:scale-90" href="/swap">Swap</Link>
+                <Link className="text-sm underline underline-offset-4 self-center ease-linear duration-200 hover:scale-90" href="/liquidity-pool">Liquidity Pool</Link>
             </div>
 
             <div className="flex flex-row items-center ">

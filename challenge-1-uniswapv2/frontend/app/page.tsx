@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <div className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
         <Image
           src="/og-logo.png"
@@ -13,7 +13,7 @@ export default function Home() {
           priority
         />
         <p>Get started by checking out the demos</p>
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
+        <ol className="list-inside list-decimal text-sm text-center sm:text-left">
           <li className="mb-2">
             <Link href="/wallet">Wallet</Link>
           </li>

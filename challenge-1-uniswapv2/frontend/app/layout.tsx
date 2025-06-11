@@ -4,11 +4,11 @@ import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/app/providers';
 
-const unbounded = Unbounded({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  display: 'swap',
-})
+// const unbounded = Unbounded({
+//   subsets: ['latin'],
+//   weight: ['400', '700'],
+//   display: 'swap',
+// })
 
 export const metadata: Metadata = {
   title: "OpenGuild DaNang Hackcamp 2025",
@@ -23,7 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={unbounded.className}
+      // className={
+      //   unbounded.className}
       >
         <Providers>
           <main>
