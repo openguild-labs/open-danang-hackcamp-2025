@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/ajiguruhprasetyo/code/blockchain/polkadot/hackathon/open-danang-hackcamp-2025/challenge-2-lending-borrowing/frontend/app/layout\":[\"static/media/176b159565394c49-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"
