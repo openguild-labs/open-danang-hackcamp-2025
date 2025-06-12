@@ -45,7 +45,7 @@ module.exports = {
         },
         paseo: {
             url: "https://testnet-passet-hub-eth-rpc.polkadot.io/",
-            chainId: parseInt("0x190f1b45", 16), // 419430469
+            chainId: 420420421.,
             accounts: getAccounts(),
             gasPrice: 20000000000,
             gas: 6000000,
@@ -58,7 +58,7 @@ module.exports = {
         customChains: [
             {
                 network: "paseo",
-                chainId: parseInt("0x190f1b45", 16),
+                chainId: 420420421,
                 urls: {
                     apiURL: "https://blockscout-passet-hub.parity-testnet.parity.io/api",
                     browserURL: "https://blockscout-passet-hub.parity-testnet.parity.io/"

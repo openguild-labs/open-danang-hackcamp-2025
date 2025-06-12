@@ -82,7 +82,7 @@ Link : https://blockscout-passet-hub.parity-testnet.parity.io/
 
 + ETH - EVM-compatible RPC: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
 
-+ ChainID: `420420421`
++ ChainID: `0x190f1b45`
 
 
 

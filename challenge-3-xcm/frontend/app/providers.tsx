@@ -23,11 +23,11 @@ import { Provider as JotaiProvider } from 'jotai';
 // import according to docs
 
 export const paseoAssetHub = defineChain({
-  id: 420417733,
+  id: 420420421,
   name: "Paseo AssetHub",
   nativeCurrency: {
     decimals: 18,
-    name:'Paseo',
+    name: 'Paseo',
     symbol: 'PAS',
   },
   rpcUrls: {

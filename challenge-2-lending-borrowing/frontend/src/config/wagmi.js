@@ -4,7 +4,7 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 
 // Paseo Asset Hub configuration
 const paseoAssetHub = {
-    id: 419430469, // 0x190f1b45
+    id: 420420421, // 0x190f1b45
     name: 'Paseo Asset Hub',
     nativeCurrency: {
         decimals: 18,
@@ -66,15 +66,7 @@ export const LENDING_POOL_ABI = [
         "stateMutability": "nonpayable",
         "type": "function"
     },
-
     // Helper Functions
-    {
-        "inputs": [{ "name": "loanAmount", "type": "uint256" }],
-        "name": "_loanRequiredCollateral",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
     {
         "inputs": [{ "name": "user", "type": "address" }],
         "name": "getLoanDetails",
@@ -123,31 +115,6 @@ export const LENDING_POOL_ABI = [
         "stateMutability": "view",
         "type": "function"
     },
-
-    // Admin Functions
-    {
-        "inputs": [{ "name": "_collateralFactor", "type": "uint256" }],
-        "name": "setCollateralFactor",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{ "name": "_interestRate", "type": "uint256" }],
-        "name": "setInterestRate",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{ "name": "_liquidationThreshold", "type": "uint256" }],
-        "name": "setLiquidationThreshold",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-
-    // View Functions for Contract State
     {
         "inputs": [],
         "name": "collateralFactor",
@@ -161,70 +128,10 @@ export const LENDING_POOL_ABI = [
         "outputs": [{ "name": "", "type": "uint256" }],
         "stateMutability": "view",
         "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "liquidationThreshold",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "totalCollateral",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "totalLoans",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-
-    // Events
-    {
-        "anonymous": false,
-        "inputs": [
-            { "indexed": true, "name": "user", "type": "address" },
-            { "indexed": false, "name": "amount", "type": "uint256" }
-        ],
-        "name": "CollateralDeposited",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            { "indexed": true, "name": "user", "type": "address" },
-            { "indexed": false, "name": "amount", "type": "uint256" }
-        ],
-        "name": "CollateralWithdrawn",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            { "indexed": true, "name": "user", "type": "address" },
-            { "indexed": false, "name": "loanAmount", "type": "uint256" },
-            { "indexed": false, "name": "collateralAmount", "type": "uint256" }
-        ],
-        "name": "LoanTaken",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            { "indexed": true, "name": "user", "type": "address" },
-            { "indexed": false, "name": "amount", "type": "uint256" }
-        ],
-        "name": "LoanRepaid",
-        "type": "event"
     }
 ];
 
-// ERC20 Token ABI for collateral and loan tokens
+// ERC20 Token ABI
 export const ERC20_ABI = [
     {
         "inputs": [
@@ -242,71 +149,14 @@ export const ERC20_ABI = [
         "outputs": [{ "name": "", "type": "uint256" }],
         "stateMutability": "view",
         "type": "function"
-    },
-    {
-        "inputs": [
-            { "name": "owner", "type": "address" },
-            { "name": "spender", "type": "address" }
-        ],
-        "name": "allowance",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "totalSupply",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "decimals",
-        "outputs": [{ "name": "", "type": "uint8" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "symbol",
-        "outputs": [{ "name": "", "type": "string" }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "name",
-        "outputs": [{ "name": "", "type": "string" }],
-        "stateMutability": "view",
-        "type": "function"
     }
 ];
 
 // Utility functions for contract interactions
 export const LENDING_OPERATIONS = {
-    // Calculate required collateral for a loan amount
     calculateRequiredCollateral: (loanAmount, collateralFactor) => {
         if (!loanAmount || !collateralFactor) return 0n;
         return (BigInt(loanAmount) * BigInt(collateralFactor)) / 100n;
-    },
-
-    // Calculate maximum loan amount from collateral
-    calculateMaxLoan: (collateralAmount, collateralFactor) => {
-        if (!collateralAmount || !collateralFactor) return 0n;
-        return (BigInt(collateralAmount) * 100n) / BigInt(collateralFactor);
-    },
-
-    // Calculate health factor (collateral value / loan value)
-    calculateHealthFactor: (collateralAmount, loanAmount, collateralFactor) => {
-        if (!loanAmount || loanAmount === 0n) return 1000n; // Max health if no loan
-        const collateralValue = (BigInt(collateralAmount) * 100n) / BigInt(collateralFactor);
-        return (collateralValue * 100n) / BigInt(loanAmount);
-    },
-
-    // Check if position is healthy (health factor > liquidation threshold)
-    isPositionHealthy: (healthFactor, liquidationThreshold = 120n) => {
-        return healthFactor >= liquidationThreshold;
     }
 };
 
@@ -314,5 +164,5 @@ export const config = getDefaultConfig({
     appName: 'DeFi Lending & Borrowing',
     projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-project-id',
     chains: [paseoAssetHub],
-    ssr: false, // Disable SSR for wallet connections
+    ssr: false,
 });
