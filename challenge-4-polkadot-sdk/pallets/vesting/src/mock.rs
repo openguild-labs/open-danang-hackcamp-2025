@@ -70,7 +70,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 
-pub const ALICE_BALANCE: u64 = 100;
+pub const ALICE_BALANCE: u64 = 10000;
 pub const CHARLIE_BALANCE: u64 = 50;
 
 #[derive(Default)]
