@@ -234,7 +234,7 @@ The app is configured for Paseo Asset Hub testnet. Network details are in `src/c
 
 ```javascript
 const paseoAssetHub = {
-  id: 419430469, // 0x190f1b45
+  id: 420420421, // 420420421
   name: 'Paseo Asset Hub',
   nativeCurrency: {
     decimals: 18,

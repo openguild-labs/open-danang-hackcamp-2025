@@ -78,19 +78,15 @@ npm run dev
 # "dev": "next dev -p <port>"
 ```
 
-### 5. Configure MetaMask
+## Network Info
 
-Add local network to MetaMask:
-- **Network Name**: `Localhost 8545`
-- **RPC URL**: `http://127.0.0.1:8545`
-- **Chain ID**: `1337`
-- **Currency Symbol**: `DOT`
-
-For Paseo Testnet:
-- **Network Name**: `Paseo Asset Hub`
-- **RPC URL**: `https://testnet-passet-hub-eth-rpc.polkadot.io/`
-- **Chain ID**: `420420421` (420420421)
-- **Currency Symbol**: `PAS`
+| Property | Value |
+|----------|--------|
+| Network Name | Paseo Asset Hub |
+| RPC URL | https://testnet-passet-hub-eth-rpc.polkadot.io/ |
+| Chain ID | 0x190f1b45 |
+| Explorer | https://blockscout-passet-hub.parity-testnet.parity.io/ |
+| Faucet | https://faucet.polkadot.io/?parachain=1111 |
 
 ### 6. Use the DEX
 

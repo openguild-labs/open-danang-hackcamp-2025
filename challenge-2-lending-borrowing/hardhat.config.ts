@@ -42,7 +42,7 @@ const config: HardhatUserConfig = {
             gasPrice: 8000000000,
             allowUnlimitedContractSize: true,
             accounts: {
-                accountsBalance: "10000000000000000000000", // 10000 ETH,
+                accountsBalance: "10000000000000000000000", // 10000 DOT,
                 count: 10,
             },
         },
@@ -52,7 +52,7 @@ const config: HardhatUserConfig = {
         },
         paseoAssetHub: {
             url: 'https://testnet-passet-hub-eth-rpc.polkadot.io/',
-            chainId: parseInt("0x190f1b45", 16),
+            chainId: 420420421,
             accounts: getAccounts(),
             gasPrice: 20000000000,
             gas: 6000000,

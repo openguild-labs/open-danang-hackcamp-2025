@@ -22,12 +22,12 @@ import { WagmiProvider, http, createConfig } from 'wagmi';
 import { Provider as JotaiProvider } from 'jotai';
 
 export const paseoAssetHub = defineChain({
-    id: 420417733,
+    id: 420420421,
     name: "Paseo AssetHub",
     nativeCurrency: {
         decimals: 18,
         name: 'Paseo',
-        symbol: 'PAS',
+        symbol: 'WND',
     },
     rpcUrls: {
         default: {

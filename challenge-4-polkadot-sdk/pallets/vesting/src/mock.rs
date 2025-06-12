@@ -3,94 +3,76 @@
 #![cfg(test)]
 
 use super::*;
-use polkadot_sdk::{frame_support::{
-	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64, EnsureOrigin},
-}, sp_runtime::traits::ConvertInto};
-
+use frame::prelude::*;
 use polkadot_sdk::{
-	polkadot_sdk_frame::runtime::prelude::*,
-	*,
+    frame_support::{
+        construct_runtime, derive_impl,
+        traits::{ConstU32, ConstU64},
+    },
+    sp_runtime::{
+        traits::{BlakeTwo256, IdentityLookup},
+        BuildStorage,
+    },
 };
 
+use polkadot_sdk::{polkadot_sdk_frame::runtime::prelude::*, *};
 
-use polkadot_sdk::sp_runtime::{traits::IdentityLookup, BuildStorage};
+type Block = polkadot_sdk::frame_system::mocking::MockBlock<Runtime>;
 
-use crate as vesting;
+// Configure a mock runtime to test the pallet.
+construct_runtime!(
+    pub enum Runtime {
+        System: polkadot_sdk::frame_system,
+        PalletBalances: polkadot_sdk::pallet_balances,
+        Vesting: pallet_vesting,
+    }
+);
 
-pub type AccountId = u128;
-
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+#[derive_impl(polkadot_sdk::frame_system::config_preludes::TestDefaultConfig)]
 impl polkadot_sdk::frame_system::Config for Runtime {
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Block = Block;
-	type AccountData = pallet_balances::AccountData<Balance>;
+    type Block = Block;
+    type AccountData = polkadot_sdk::pallet_balances::AccountData<Balance>;
 }
 
 type Balance = u64;
+type AccountId = u64;
 
-impl pallet_balances::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type AccountStore = frame_system::Pallet<Runtime>;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = ();
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type RuntimeFreezeReason = RuntimeFreezeReason;
-	type FreezeIdentifier = [u8; 8];
-	type MaxFreezes = ();
-	type DoneSlashHandler = ();
+#[derive_impl(polkadot_sdk::pallet_balances::config_preludes::TestDefaultConfig)]
+impl polkadot_sdk::pallet_balances::Config for Runtime {
+    type AccountStore = System;
+    type Balance = Balance;
 }
 
-
-impl Config for Runtime {
-	type Currency = PalletBalances;
-	type MinVestedTransfer = ConstU64<5>;
-	type MaxVestingSchedules = ConstU32<2>;
-    type BlockNumberToBalance = ConvertInto;
-
+impl pallet_vesting::Config for Runtime {
+    type Currency = PalletBalances;
+    type BlockNumberToBalance = polkadot_sdk::sp_runtime::traits::ConvertInto;
+    type MaxVestingSchedules = ConstU32<10>;
+    type MinVestedTransfer = ConstU64<10>;
 }
 
-type Block = frame_system::mocking::MockBlock<Runtime>;
-
-construct_runtime!(
-	pub enum Runtime {
-		System: frame_system,
-		Vesting: vesting,
-		PalletBalances: pallet_balances,
-	}
-);
-
+// Test accounts
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CHARLIE: AccountId = 3;
 
-pub const ALICE_BALANCE: u64 = 100;
-pub const CHARLIE_BALANCE: u64 = 50;
+// Build genesis storage according to the mock runtime.
+pub fn new_test_ext() -> polkadot_sdk::sp_io::TestExternalities {
+    let mut storage = polkadot_sdk::frame_system::GenesisConfig::<Runtime>::default()
+        .build_storage()
+        .unwrap();
 
-#[derive(Default)]
+    polkadot_sdk::pallet_balances::GenesisConfig::<Runtime> {
+        balances: vec![(ALICE, 1000), (BOB, 1000)],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    storage.into()
+}
+
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub fn build() -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.unwrap();
-
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, ALICE_BALANCE), (CHARLIE, CHARLIE_BALANCE)],
-			..Default::default()
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-
-		t.into()
-	}
+    pub fn build() -> polkadot_sdk::sp_io::TestExternalities {
+        new_test_ext()
+    }
 }
-
