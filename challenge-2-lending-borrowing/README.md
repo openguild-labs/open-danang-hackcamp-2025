@@ -65,4 +65,3 @@ Build the UI with features based on the requirements:
 - [ ] Deploy to Paseo Asset Hub 
 
 
-

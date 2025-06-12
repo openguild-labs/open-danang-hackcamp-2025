@@ -1,29 +1,82 @@
+# Uniswap V2 DEX for Polkadot Asset Hub
 
-## Challenge details
-A decentralized exchange (DEX) implementation based on Uniswap V2's architecture, adapted for Polkadot Asset Hub, enabling automated market making and token swaps with liquidity pools.
+A decentralized exchange implementation based on Uniswap V2's architecture, adapted for Polkadot Asset Hub.
 
-## Functional Specifications 
+## Features
 
-+ Swap interface 
-+ Liquidity Management
-
-
-## Implementation Smart Contract Requirements
-
-Link contract: [Contract](./contracts)
-
-- [ ] **Deploy a factory, pair, and ERC20 token contracts on Paseo Asset Hub**
+- 🔄 **Swap Token** - Exchange tokens with automated market making
+- 💧 **Provide Liquidity** - Create new liquidity pools for token pairs
+- ➕ **Add Liquidity to Existing Pool** - Contribute to existing trading pairs
+- ➖ **Remove Liquidity** - Withdraw your liquidity from pools
 
 
+## Requirements
 
-## Implementation UI Requirements 
+Before you begin, you need to install the following tools:
 
-Link UI sample: [DOT UI](./frontend)
+- **Node.js** ( 20 or higher) - [Download here](https://nodejs.org/)
+- **npm** (latest version or > v10)
+- **Git** - [Download here](https://git-scm.com/)
+- **MetaMask** browser extension - [Install here](https://metamask.io/)
 
-Build the UI with features based on the requirements:
+## Paseo Testnet Information
 
-- [ ] **Connect the frontend to Asset Hub using MetaMask and Web3 Tools ( Viem, Ethersjs)**
-- [ ] **Build frontend with swap interface and liquidity pool management**
+### Paseo Contract Faucet
+Link: https://faucet.polkadot.io/?parachain=1111
+
+### Explorer
+Link: https://blockscout-passet-hub.parity-testnet.parity.io/
+
+### RPC
+ETH - EVM-compatible RPC: https://testnet-passet-hub-eth-rpc.polkadot.io/
+
+### ChainID
+420420421
+
+## Quick Start
+
+### 1. Clone and Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/ajiguruhprasetyo/open-danang-hackcamp-2025.git
+
+# Navigate to project
+cd open-danang-hackcamp-2025/challenge-1-uniswapv2
+
+# Install dependencies
+npm install
+```
+
+### 2. Start Local Blockchain
+
+```bash
+# Terminal 1: Start Hardhat node
+npx hardhat node
+```
+
+### 3. Deploy Contracts
+
+```bash
+# Terminal 2: Deploy contracts
+npx hardhat run scripts/deploy.js --network localhost
+```
+
+### 4. Setup Frontend
+
+```bash
+# Navigate to frontend
+cd frontend
+
+# Install frontend dependencies
+npm install
+
+# Start development server (default port 3000)
+npm run dev
+
+# To change port, modify package.json:
+# "dev": "next dev -p <port>"
+```
 
 ## Network Info
 
@@ -35,10 +88,55 @@ Build the UI with features based on the requirements:
 | Explorer | https://blockscout-passet-hub.parity-testnet.parity.io/ |
 | Faucet | https://faucet.polkadot.io/?parachain=1111 |
 
+### 6. Use the DEX
 
-## Submission Requirements 
-- [ ] Deploy a factory, pair, and ERC20 token contracts on Paseo Asset Hub
-- [ ] Complete UI 
+1. Open http://localhost:3000
+2. Connect your MetaMask wallet
+3. Start swapping tokens and managing liquidity!
+
+## Project Structure
+
+```
+challenge-1-uniswapv2/
+├── contracts/                 # Smart contracts
+├── scripts/                  # Deployment scripts  
+├── frontend/                 # React frontend
+└── test/                     # Contract tests
+```
+
+## Main Commands
+
+```bash
+# Backend
+npm run compile                # Compile contracts
+npm test                      # Run tests
+npx hardhat node             # Start local blockchain
+
+# Frontend
+cd frontend
+npm run dev                  # Start development server
+npm run build               # Build for production
+```
+
+## Building the Project
+
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+## Participant Registration
+
+| 🦄 | Aji Guruh Prasetyo | ajiguruhprasetyo | Blockchain Engineer |
+
+## License
+
+MIT License
+
+Happy DEXing! 🚀
 
 
 
