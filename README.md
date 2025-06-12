@@ -34,6 +34,7 @@ Go to **Participant Registration** section and register to be the workshop parti
 
 ```
 | 🦄 | Name | Github username | Your current occupation |
+| 😊 | Aliyu Adeniji | AbuTuraab | Freelance Blockchain Developer |
 ```
 
 - Step 5: `Commit` your code and push to the forked Github repository
