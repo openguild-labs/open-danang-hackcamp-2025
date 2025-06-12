@@ -240,7 +240,7 @@ parameter_types! {
 impl pallet_native_pools::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = NativePoolsPalletId;
-	type RewardOrigin = EnsureSigned<AccountId>;
+	type RewardOrigin = EnsureRoot<AccountId>;
 
 }
 

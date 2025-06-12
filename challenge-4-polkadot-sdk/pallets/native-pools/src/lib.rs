@@ -23,6 +23,7 @@ type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 type BlockNumberFor<T> = frame_system::pallet_prelude::BlockNumberFor<T>;
+type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
 /// Information about a user's deposit in the pool
 #[derive(Clone, Encode, Decode, MaxEncodedLen, TypeInfo, Debug, PartialEq)]
@@ -263,12 +264,12 @@ pub mod pallet {
 		#[pallet::weight({10_000})]
 		pub fn deposit_rewards(
 			origin: OriginFor<T>,
+			authority: AccountIdLookupOf<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 
 			T::RewardOrigin::ensure_origin(origin.clone())?;
-			let who = ensure_signed(origin)?;
-			
+			let authority = T::Lookup::lookup(authority)?;
 			ensure!(!amount.is_zero(), Error::<T>::ZeroAmount);
 
 			// Update pool state before adding rewards
@@ -276,7 +277,7 @@ pub mod pallet {
 
 			// Transfer rewards to pool
 			let pool_account = Self::account_id();
-			T::Currency::transfer(&who, &pool_account, amount, ExistenceRequirement::AllowDeath)?;
+			T::Currency::transfer(&authority, &pool_account, amount, ExistenceRequirement::AllowDeath)?;
 
 			// Update total rewards
 			TotalRewards::<T>::mutate(|total| *total = total.saturating_add(amount));
