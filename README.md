@@ -68,6 +68,16 @@ Total Bifrost Parner prize pool: **300$-1000$** (dedicated to Bifrost's Challeng
 
 </div>
 
+## 👥 Participant Registration
+
+Register here to be official participants of OpenGuild Da Nang Hackcamp 2025:
+
+| 🦄 | Name | Github username | Your current occupation |
+| --- | --- | --- | --- |
+| 🦄 | Trieu Nguyen | trieunguyen96 | Blockchain Developer & Full-stack Engineer |
+
+---
+
 ## 👉 Resource for Development and Support Channels
 
 ### Paseo Contract Faucet 
