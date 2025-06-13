@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-// Import Vesting with dynamic import (since it uses client hooks)
 const XCM = dynamic(() => import("@/components/xcm/NFT"), {
   ssr: false,
 });
