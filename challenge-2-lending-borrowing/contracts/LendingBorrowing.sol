@@ -55,11 +55,6 @@ contract LendingBorrowing is Ownable {
             currentCollateral >= _amount,
             "Insufficient collateral balance"
         );
-        uint256 requiredCollateral = _loanRequiredCollateral(msg.sender);
-        require(
-            requiredCollateral <= currentCollateral - _amount,
-            "Cannot withdraw collateral while loan is active"
-        );
         collateralBalances[msg.sender] -= _amount;
         collateralToken.transfer(msg.sender, _amount);
         emit CollateralWithdrawn(msg.sender, _amount);
@@ -69,16 +64,15 @@ contract LendingBorrowing is Ownable {
         Loan memory loan = loans[msg.sender];
         require(!loan.isActive, "Existing loan must be repaid first");
         require(_amount > 0, "Loan amount must be greater than zero");
-        uint256 requiredCollateral = (_amount * collateralFactor) / 100;
+        uint256 maxBorrowable = _maxBorrowableAmount(msg.sender);
+        require(maxBorrowable >= _amount, "Insufficient collateral for loan");
+
         uint256 currentCollateral = collateralBalances[msg.sender];
-        require(
-            currentCollateral >= requiredCollateral,
-            "Insufficient collateral for loan"
-        );
+        collateralBalances[msg.sender] -= currentCollateral;
 
         loans[msg.sender] = Loan({
             amount: _amount,
-            collateral: requiredCollateral,
+            collateral: currentCollateral,
             isActive: true
         });
 
@@ -97,18 +91,17 @@ contract LendingBorrowing is Ownable {
         if (loan.amount == 0) {
             loan.isActive = false;
             collateralBalances[msg.sender] += loan.collateral;
+            loan.collateral = 0;
         }
 
         lendingToken.transferFrom(msg.sender, address(this), _amount);
         emit LoanRepaid(msg.sender, _amount);
     }
 
-    function _loanRequiredCollateral(
+    function _maxBorrowableAmount(
         address _user
     ) internal view returns (uint256) {
-        Loan memory loan = loans[_user];
-        require(loan.isActive, "No active loan found for user");
-        return (loan.amount * collateralFactor) / 100;
+        return (collateralBalances[_user] * collateralFactor) / 100;
     }
 
     function getLoanDetails(

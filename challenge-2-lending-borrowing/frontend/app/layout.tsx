@@ -3,6 +3,8 @@ import { Unbounded } from "next/font/google";
 import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/app/providers';
+import Header from '@/components/header';
+import { Toaster } from "@/components/ui/toaster";
 
 const unbounded = Unbounded({
   subsets: ['latin'],
@@ -11,8 +13,8 @@ const unbounded = Unbounded({
 })
 
 export const metadata: Metadata = {
-  title: "DOT UI kit",
-  description: "a UI kit for Polkadot DApps",
+  title: "LendFi - Decentralized Lending & Borrowing",
+  description: "A decentralized lending and borrowing platform built on Polkadot",
 };
 
 export default function RootLayout({
@@ -22,13 +24,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={unbounded.className}
-      >
+      <body className={unbounded.className}>
         <Providers>
-          <main>
+          <Header />
+          <main className="min-h-screen bg-background">
             {children}
           </main>
+          <Toaster />
         </Providers>
       </body>
     </html>

@@ -10,17 +10,16 @@ describe("LendingBorrowing", function () {
   let lendingToken: MockERC20;
   let owner: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
-  let user2: HardhatEthersSigner;
+  // let user2: HardhatEthersSigner;
 
   const COLLATERAL_FACTOR: bigint = 50n; // 50%
   const INITIAL_SUPPLY: bigint = ethers.parseEther("1000000"); // 1 million tokens
 
   beforeEach(async function () {
-    [owner, user1, user2] = await hre.ethers.getSigners();
+    [owner, user1] = await hre.ethers.getSigners();
 
     console.log("Owner address:", owner.address);
     console.log("User1 address:", user1.address);
-    console.log("User2 address:", user2.address);
 
     const MyTokenFactory = await ethers.getContractFactory("MockERC20");
 
@@ -51,7 +50,6 @@ describe("LendingBorrowing", function () {
     lendingBorrowing = await lendingBorrowingInstance.waitForDeployment();
 
     await collateralToken.transfer(user1.address, ethers.parseEther("100"));
-    await collateralToken.transfer(user2.address, ethers.parseEther("100"));
     await lendingToken.transfer(
       await lendingBorrowing.getAddress(),
       INITIAL_SUPPLY
@@ -91,10 +89,6 @@ describe("LendingBorrowing", function () {
     beforeEach(async function () {
       await collateralToken
         .connect(user1)
-        .approve(await lendingBorrowing.getAddress(), depositAmount);
-
-      await collateralToken
-        .connect(user2)
         .approve(await lendingBorrowing.getAddress(), depositAmount);
     });
 
@@ -168,11 +162,12 @@ describe("LendingBorrowing", function () {
       await expect(lendingBorrowing.connect(user1).takeLoan(loanAmount))
         .to.emit(lendingBorrowing, "LoanTaken")
         .withArgs(user1.address, loanAmount);
+
       const loanDetails = await lendingBorrowing.loans(user1.address);
       expect(loanDetails.amount).to.equal(loanAmount);
       expect(loanDetails.isActive).to.equal(true);
-      const expectedCollateral = (loanAmount * 100n) / COLLATERAL_FACTOR;
-      expect(loanDetails.collateral).to.equal(expectedCollateral);
+
+      expect(loanDetails.collateral).to.equal(collateralAmount);
     });
 
     it("Should not allow loans exceeding collateral limit", async function () {
@@ -192,28 +187,36 @@ describe("LendingBorrowing", function () {
 
     it("Should allow users to repay loans", async function () {
       await lendingBorrowing.connect(user1).takeLoan(loanAmount);
+      const loanDetailsAfterLoan = await lendingBorrowing.loans(user1.address);
+      expect(loanDetailsAfterLoan.amount).to.equal(loanAmount);
+      expect(loanDetailsAfterLoan.isActive).to.equal(true);
+      expect(loanDetailsAfterLoan.collateral).to.equal(collateralAmount);
 
       await lendingToken
         .connect(user1)
         .approve(await lendingBorrowing.getAddress(), loanAmount);
 
-      await expect(lendingBorrowing.connect(user1).repayLoan(loanAmount))
-        .to.emit(lendingBorrowing, "LoanRepaid")
-        .withArgs(user1.address, loanAmount);
+      await expect(
+        lendingBorrowing.connect(user1).repayLoan(loanAmount)
+      ).to.emit(lendingBorrowing, "LoanRepaid");
 
-      const loanDetails = await lendingBorrowing.loans(user1.address);
-      expect(loanDetails.amount).to.equal(0n);
-      expect(loanDetails.isActive).to.equal(false);
-
-      const userCollateral = await lendingBorrowing.collateralBalances(
+      const loanDetailsAfterRepayment = await lendingBorrowing.loans(
         user1.address
       );
-      expect(userCollateral).to.equal(collateralAmount);
+      expect(loanDetailsAfterRepayment.amount).to.equal(0n);
+      expect(loanDetailsAfterRepayment.isActive).to.equal(false);
+      expect(loanDetailsAfterRepayment.collateral).to.equal(0n);
 
+      const useCollateralAfterRepayment =
+        await lendingBorrowing.collateralBalances(user1.address);
+      expect(useCollateralAfterRepayment).to.equal(collateralAmount);
+
+      const user1Balance = await lendingToken.balanceOf(user1.address);
+      expect(user1Balance).to.equal(0);
       const contractBalance = await lendingToken.balanceOf(
         await lendingBorrowing.getAddress()
       );
-      expect(contractBalance).to.equal(INITIAL_SUPPLY + loanAmount);
+      expect(contractBalance).to.equal(INITIAL_SUPPLY);
     });
 
     it("Should not allow repayment of non-existent loans", async function () {
