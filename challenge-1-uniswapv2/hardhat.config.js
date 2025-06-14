@@ -1,45 +1,28 @@
 require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-ignition");
+// require("@nomicfoundation/hardhat-ignition");
 
-require("hardhat-resolc");
-require("hardhat-revive-node");
+// require("hardhat-resolc");
+// require("hardhat-revive-node");
 
 require("dotenv").config();
-console.log(process.env.LOCAL_PRIV_KEY);
-console.log(process.env.AH_PRIV_KEY);
-// require("hardhat-revive-node");
+console.log("Local Private Key:", process.env.LOCAL_PRIV_KEY ? "✅ Configured" : "❌ Missing");
+console.log("Asset Hub Private Key:", process.env.AH_PRIV_KEY ? "✅ Configured" : "❌ Missing");
+
 /** @type import('hardhat/config').HardhatUserConfig */
 const config = {
   solidity: "0.8.19",
-  resolc: {
-        compilerSource: 'npm',
-  },
   networks: {
     hardhat: {
-      polkavm: true,
-      nodeConfig: {
-        nodeBinaryPath: './binaries/substrate-node',
-        rpcPort: 8000,
-        dev: true,
-      },
-      adapterConfig: {
-        adapterBinaryPath: './binaries/eth-rpc',
-        dev: true,
-      },
+      chainId: 31337
     },
-    polkavm: {
-      polkavm: true,   
-      url: 'http://127.0.0.1:8545',
-      accounts: [process.env.LOCAL_PRIV_KEY, process.env.AH_PRIV_KEY],
-    },
-
-    paseoAssetHub: { 
-      polkavm: true,
+    paseo: { 
       url: "https://testnet-passet-hub-eth-rpc.polkadot.io/",
+      chainId: 420420422,
       accounts: [process.env.AH_PRIV_KEY],
+      timeout: 60000,
+      gasPrice: "auto"
     },
   },
 };
-
 
 module.exports = config;

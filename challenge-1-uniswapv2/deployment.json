@@ -1,0 +1,47 @@
+{
+  "network": {
+    "name": "Paseo Asset Hub",
+    "chainId": 420420422,
+    "rpc": "https://testnet-passet-hub-eth-rpc.polkadot.io/",
+    "explorer": "https://blockscout-passet-hub.parity-testnet.parity.io/"
+  },
+  "deployer": {
+    "address": "0x15820099D07106fb55C3487610ab673d870833F0",
+    "balance": "993.4455260005"
+  },
+  "contracts": {
+    "factory": {
+      "address": "0xcC7Cf672147325f9dE0629C0ffccBC5724a5A4AE",
+      "name": "UniswapV2Factory"
+    },
+    "weth": {
+      "address": "0x9E74fC88465Ca0a8E3899D3aD235C99b127bc21D",
+      "name": "Wrapped Ether"
+    },
+    "tokenA": {
+      "address": "0x8D6e37347A6020B5D0902D15257F28a2c19B4145",
+      "name": "Test Token A"
+    },
+    "tokenB": {
+      "address": "0x2251bf61f55e22dAa392b0e83A66f2DbF21176fb",
+      "name": "Test Token B"
+    },
+    "testPair": null
+  },
+  "timestamp": "2025-06-14T15:12:14.848Z",
+  "status": "SUCCESS",
+  "tokens": {
+    "PAS": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "symbol": "PAS",
+      "balance": "983.2388262766",
+      "isNative": true
+    },
+    "WETH": {
+      "address": "0x9E74fC88465Ca0a8E3899D3aD235C99b127bc21D",
+      "symbol": "WETH",
+      "balance": "10.0",
+      "isNative": false
+    }
+  }
+}
