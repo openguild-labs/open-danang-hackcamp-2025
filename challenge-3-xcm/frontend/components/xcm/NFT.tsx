@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Upload,
   Wallet,
@@ -13,16 +13,15 @@ import {
   Send,
   Eye,
   History,
-  Coins,
   Zap,
-  RefreshCw,
   X,
   Plus,
   Copy,
-  Settings,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 
-// Polkadot imports
+// Polkadot/Substrate imports
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import {
   web3Accounts,
@@ -31,6 +30,7 @@ import {
 } from "@polkadot/extension-dapp";
 import { Builder } from "@paraspell/sdk";
 import { BN } from "@polkadot/util";
+import { stringToU8a, u8aToHex } from "@polkadot/util";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -54,18 +54,19 @@ interface NFTMetadata {
   name: string;
   description: string;
   image: string;
-  collection: string;
   chain: string;
   status: "minted" | "transferred" | "pending" | "failed";
   owner: string;
   txHash?: string;
   createdAt: string;
   blockNumber?: number;
+  ipfsHash?: string;
+  attributes?: Array<{ key: string; value: string }>;
 }
 
 interface Transaction {
   id: string;
-  type: "mint" | "transfer" | "swap" | "create_collection";
+  type: "mint" | "transfer" | "swap";
   status: "pending" | "success" | "failed";
   from: string;
   to: string;
@@ -92,6 +93,9 @@ interface ChainConfig {
   explorer: string;
   paraId?: number;
   prefix: number;
+  chainId?: number;
+  token: string;
+  decimals: number;
 }
 
 interface TokenInfo {
@@ -101,23 +105,57 @@ interface TokenInfo {
   assetId?: number;
 }
 
+// Updated chain configurations for Paseo testnet with correct tokens
+const CHAIN_CONFIGS: ChainConfig[] = [
+  {
+    id: "AssetHub",
+    name: "Paseo Asset Hub",
+    color: "bg-blue-500",
+    wsUrl: "wss://paseo-asset-hub-rpc.polkadot.io",
+    explorer: "https://paseo.subscan.io",
+    paraId: 1000,
+    prefix: 0,
+    chainId: 420417733,
+    token: "PAS",
+    decimals: 10,
+  },
+  {
+    id: "Hydration",
+    name: "Hydration Testnet",
+    color: "bg-cyan-500",
+    wsUrl: "wss://rpc.hydradx.cloud",
+    explorer: "https://hydration.subscan.io",
+    paraId: 2034,
+    prefix: 63,
+    token: "HDX",
+    decimals: 12,
+  },
+];
+
+const supportedTokens: TokenInfo[] = [
+  { symbol: "PAS", name: "Paseo", decimals: 10 },
+  { symbol: "HDX", name: "HydraDX", decimals: 12 },
+  { symbol: "USDT", name: "Tether USD", decimals: 6, assetId: 1984 },
+  { symbol: "USDC", name: "USD Coin", decimals: 6, assetId: 1337 },
+];
+
 const XCMNFTApp = () => {
   // State management
   const [activeTab, setActiveTab] = useState("mint");
   const [walletConnected, setWalletConnected] = useState(false);
   const [polkadotAccount, setPolkadotAccount] = useState<any>(null);
   const [api, setApi] = useState<ApiPromise | null>(null);
+  const [selectedChain, setSelectedChain] = useState<string>("AssetHub");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [progress, setProgress] = useState(0);
 
-  // NFT State
+  // NFT State - Simplified without collections
   const [nftData, setNftData] = useState({
     name: "",
     description: "",
     image: null as File | null,
-    collection: "",
     attributes: [] as Array<{ key: string; value: string }>,
   });
 
@@ -130,105 +168,77 @@ const XCMNFTApp = () => {
 
   // Swap State
   const [swapData, setSwapData] = useState<SwapData>({
-    fromToken: "DOT",
+    fromToken: "PAS",
     toToken: "HDX",
     amount: "",
     slippage: "0.5",
   });
 
-  // Collections State
-  const [collections, setCollections] = useState<
-    Array<{ id: string; name: string; owner: string }>
-  >([]);
-  const [selectedCollection, setSelectedCollection] = useState("");
-  const [newCollectionName, setNewCollectionName] = useState("");
-  const [showCreateCollection, setShowCreateCollection] = useState(false);
-
   // Data State
   const [mintedNFTs, setMintedNFTs] = useState<NFTMetadata[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [balances, setBalances] = useState({
-    dot: "0",
+    native: "0",
     hdx: "0",
     existentialDeposit: "1.0000",
   });
 
-  // Chain configurations - Updated for Paseo testnet
-  const chains: ChainConfig[] = [
-    {
-      id: "AssetHub",
-      name: "Paseo Asset Hub",
-      color: "bg-blue-500",
-      wsUrl: "wss://paseo-asset-hub-rpc.polkadot.io",
-      explorer: "https://paseo.subscan.io",
-      paraId: 1000,
-      prefix: 0,
-    },
-    {
-      id: "Hydration",
-      name: "Hydration Testnet",
-      color: "bg-cyan-500",
-      wsUrl: "wss://rpc.hydradx.cloud",
-      explorer: "https://hydration.subscan.io",
-      paraId: 2034,
-      prefix: 63,
-    },
-    {
-      id: "Moonbeam",
-      name: "Moonbase Alpha",
-      color: "bg-purple-500",
-      wsUrl: "wss://wss.api.moonbase.moonbeam.network",
-      explorer: "https://moonbase.subscan.io",
-      paraId: 1000,
-      prefix: 1287,
-    },
-  ];
-
-  const supportedTokens: TokenInfo[] = [
-    { symbol: "DOT", name: "Polkadot", decimals: 10 },
-    { symbol: "HDX", name: "HydraDX", decimals: 12 },
-    { symbol: "USDT", name: "Tether USD", decimals: 6, assetId: 1984 },
-    { symbol: "USDC", name: "USD Coin", decimals: 6, assetId: 1337 },
-  ];
+  // Get current chain config
+  const currentChain =
+    CHAIN_CONFIGS.find((c) => c.id === selectedChain) || CHAIN_CONFIGS[0];
 
   // Initialize API connection
+  const initializeAPI = useCallback(
+    async (chainConfig: ChainConfig) => {
+      try {
+        setProgress(10);
+        setError("");
+
+        // Disconnect existing API if any
+        if (api) {
+          await api.disconnect();
+          setApi(null);
+        }
+
+        setProgress(30);
+        const wsProvider = new WsProvider(chainConfig.wsUrl);
+        const apiInstance = await ApiPromise.create({ provider: wsProvider });
+
+        setProgress(60);
+        await apiInstance.isReady;
+
+        setApi(apiInstance);
+        setProgress(100);
+        console.log(`✅ Connected to ${chainConfig.name}`);
+
+        // Load NFTs for this chain
+        if (polkadotAccount) {
+          await fetchBalances(polkadotAccount.address, apiInstance);
+          await loadUserNFTs(polkadotAccount.address, apiInstance);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to connect to ${chainConfig.name}:`, error);
+        setError(
+          `Failed to connect to ${chainConfig.name}. Please check your connection.`
+        );
+        setApi(null);
+      } finally {
+        setProgress(0);
+      }
+    },
+    [api, polkadotAccount]
+  );
+
+  // Initialize API on component mount and chain change
   useEffect(() => {
-    initializeAPI();
+    initializeAPI(currentChain);
+
     return () => {
       if (api) {
         api.disconnect();
       }
     };
-  }, []);
-
-  const initializeAPI = async () => {
-    try {
-      setProgress(10);
-      const assetHubChain = chains.find((c) => c.id === "AssetHub");
-      if (!assetHubChain) {
-        throw new Error("Asset Hub configuration not found");
-      }
-
-      setProgress(30);
-      const wsProvider = new WsProvider(assetHubChain.wsUrl);
-      const apiInstance = await ApiPromise.create({ provider: wsProvider });
-
-      setProgress(60);
-      await apiInstance.isReady;
-
-      setApi(apiInstance);
-      setProgress(100);
-      console.log("✅ Connected to Paseo Asset Hub");
-
-      // Load initial data
-      await loadCollections();
-    } catch (error) {
-      console.error("❌ Failed to initialize API:", error);
-      setError(
-        "Failed to connect to Paseo Asset Hub. Please check your connection."
-      );
-    }
-  };
+  }, [selectedChain]);
 
   // Connect Polkadot wallet
   const connectPolkadotWallet = async () => {
@@ -256,8 +266,11 @@ const XCMNFTApp = () => {
       setPolkadotAccount(selectedAccount);
       setWalletConnected(true);
 
-      // Fetch balances
-      await fetchBalances(selectedAccount.address);
+      // Fetch balances for current chain
+      if (api) {
+        await fetchBalances(selectedAccount.address, api);
+        await loadUserNFTs(selectedAccount.address, api);
+      }
 
       setSuccess("Polkadot wallet connected successfully!");
     } catch (error: any) {
@@ -269,144 +282,173 @@ const XCMNFTApp = () => {
   };
 
   // Fetch account balances
-  const fetchBalances = async (address: string) => {
-    if (!api) return;
-
+  const fetchBalances = async (address: string, apiInstance: ApiPromise) => {
     try {
-      // Get free balance
-      const account = await api.query.system.account(address);
+      const account = await apiInstance.query.system.account(address);
       const balance = account.data.free.toString();
-      const dotBalance = (parseInt(balance) / Math.pow(10, 10)).toFixed(4);
+      const nativeBalance = (
+        parseInt(balance) / Math.pow(10, currentChain.decimals)
+      ).toFixed(4);
 
-      setBalances({
-        dot: dotBalance,
-        hdx: "0.0000", // Would need HDX API call
-        existentialDeposit: "1.0000",
-      });
+      setBalances((prev) => ({
+        ...prev,
+        native: nativeBalance,
+      }));
     } catch (error) {
       console.error("Failed to fetch balances:", error);
     }
   };
 
-  // Load existing collections
-  const loadCollections = async () => {
-    if (!api) return;
-
+  // Load user's NFTs - Simplified without collections
+  const loadUserNFTs = async (address: string, apiInstance: ApiPromise) => {
     try {
-      // Query existing collections
-      const collectionEntries = await api.query.nfts.collection.entries();
-      const loadedCollections = collectionEntries.map(
-        ([key, value]: [any, any]) => {
-          const collectionId = key.args[0].toString();
-          const collectionData = value.unwrap();
-          return {
-            id: collectionId,
-            name: `Collection ${collectionId}`,
-            owner: collectionData.owner.toString(),
-          };
-        }
-      );
+      if (!apiInstance.query.nfts) {
+        return;
+      }
 
-      setCollections(loadedCollections);
-    } catch (error) {
-      console.error("Failed to load collections:", error);
-    }
-  };
+      const userNFTs: NFTMetadata[] = [];
 
-  // Create new NFT collection
-  const createCollection = async () => {
-    if (!api || !polkadotAccount || !newCollectionName.trim()) {
-      setError("Please connect wallet and enter collection name");
-      return;
-    }
+      // For simplified version, we'll check a default collection ID (0)
+      // In real implementation, you'd iterate through all collections
+      try {
+        const collectionId = 0;
+        const itemEntries = await apiInstance.query.nfts.item.entries(
+          collectionId
+        );
 
-    setLoading(true);
-    setError("");
+        for (const [key, value] of itemEntries) {
+          const itemData = value.unwrap();
+          if (itemData.owner.toString() === address) {
+            const itemId = key.args[1].toString();
 
-    try {
-      const injector = await web3FromAddress(polkadotAccount.address);
+            // Get metadata if available
+            let metadata = null;
+            let ipfsHash = "";
+            try {
+              const metadataResult =
+                await apiInstance.query.nfts.itemMetadataOf(
+                  collectionId,
+                  itemId
+                );
+              if (metadataResult.isSome) {
+                metadata = metadataResult.unwrap();
+                const metadataString = new TextDecoder().decode(metadata.data);
+                if (metadataString.startsWith("ipfs://")) {
+                  ipfsHash = metadataString.replace("ipfs://", "");
+                }
+              }
+            } catch (e) {
+              console.log("No metadata for item", itemId);
+            }
 
-      // Get next available collection ID
-      const nextCollectionId =
-        collections.length > 0
-          ? Math.max(...collections.map((c) => parseInt(c.id))) + 1
-          : 1;
-
-      // Create collection transaction
-      const tx = api.tx.nfts.create(
-        nextCollectionId,
-        polkadotAccount.address, // admin
-        {
-          settings: 0,
-          maxSupply: null,
-          mintSettings: {
-            mintType: { Issuer: null },
-            price: null,
-            startBlock: null,
-            endBlock: null,
-            defaultItemSettings: 0,
-          },
-        }
-      );
-
-      const txHash = await tx.signAndSend(
-        polkadotAccount.address,
-        { signer: injector.signer },
-        ({ status, events }) => {
-          if (status.isInBlock) {
-            console.log(
-              `Collection creation included in block ${status.asInBlock}`
-            );
-
-            // Add transaction to history
-            const newTransaction: Transaction = {
-              id: Date.now().toString(),
-              type: "create_collection",
-              status: "success",
-              from: "Asset Hub",
-              to: "Asset Hub",
-              hash: txHash.toString(),
-              timestamp: new Date().toISOString(),
-              description: `Created collection: ${newCollectionName}`,
-            };
-
-            setTransactions((prev) => [newTransaction, ...prev]);
-
-            // Add to collections list
-            setCollections((prev) => [
-              ...prev,
-              {
-                id: nextCollectionId.toString(),
-                name: newCollectionName,
-                owner: polkadotAccount.address,
-              },
-            ]);
-
-            setNewCollectionName("");
-            setShowCreateCollection(false);
-            setSuccess(
-              `Collection "${newCollectionName}" created successfully!`
-            );
+            userNFTs.push({
+              id: itemId,
+              name: metadata?.data
+                ? new TextDecoder().decode(metadata.data)
+                : `NFT #${itemId}`,
+              description: "Cross-chain NFT",
+              image: "🎨",
+              chain: selectedChain,
+              status: "minted",
+              owner: address,
+              createdAt: new Date().toISOString(),
+              ipfsHash: ipfsHash,
+            });
           }
         }
-      );
-    } catch (error: any) {
-      console.error("Collection creation failed:", error);
-      setError("Failed to create collection: " + error.message);
-    } finally {
-      setLoading(false);
+      } catch (e) {
+        console.log("Error loading NFTs from default collection");
+      }
+
+      setMintedNFTs(userNFTs);
+    } catch (error) {
+      console.error("Failed to load user NFTs:", error);
     }
   };
 
-  // Mint NFT
+  // Upload to IPFS using Pinata
+  const uploadToIPFS = async (file: File, metadata: any): Promise<string> => {
+    try {
+      const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY;
+      const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY;
+
+      if (!pinataApiKey || !pinataSecretKey) {
+        throw new Error(
+          "Pinata API keys not configured. Please set NEXT_PUBLIC_PINATA_API_KEY and NEXT_PUBLIC_PINATA_SECRET_KEY"
+        );
+      }
+
+      // Upload image first
+      const imageFormData = new FormData();
+      imageFormData.append("file", file);
+
+      const imageResponse = await fetch(
+        "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        {
+          method: "POST",
+          headers: {
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataSecretKey,
+          },
+          body: imageFormData,
+        }
+      );
+
+      if (!imageResponse.ok) {
+        const errorText = await imageResponse.text();
+        throw new Error(`Failed to upload image to IPFS: ${errorText}`);
+      }
+
+      const imageResult = await imageResponse.json();
+      const imageHash = imageResult.IpfsHash;
+
+      // Create metadata with IPFS image URL
+      const nftMetadata = {
+        ...metadata,
+        image: `ipfs://${imageHash}`,
+      };
+
+      // Upload metadata
+      const metadataResponse = await fetch(
+        "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataSecretKey,
+          },
+          body: JSON.stringify({
+            pinataContent: nftMetadata,
+            pinataMetadata: {
+              name: `${metadata.name} - Metadata`,
+            },
+          }),
+        }
+      );
+
+      if (!metadataResponse.ok) {
+        const errorText = await metadataResponse.text();
+        throw new Error(`Failed to upload metadata to IPFS: ${errorText}`);
+      }
+
+      const metadataResult = await metadataResponse.json();
+      return metadataResult.IpfsHash;
+    } catch (error) {
+      console.error("IPFS upload failed:", error);
+      throw error;
+    }
+  };
+
+  // Mint NFT with simplified collection logic
   const mintNFT = async () => {
     if (!api || !polkadotAccount || !nftData.name || !nftData.description) {
       setError("Please fill all required fields and connect wallet");
       return;
     }
 
-    if (!selectedCollection) {
-      setError("Please select or create a collection first");
+    if (!api.tx.nfts) {
+      setError("NFTs pallet not available on this chain");
       return;
     }
 
@@ -418,27 +460,88 @@ const XCMNFTApp = () => {
       const injector = await web3FromAddress(polkadotAccount.address);
       setProgress(20);
 
-      // Get next available item ID in collection
-      const collectionItems = await api.query.nfts.item.entries(
-        selectedCollection
-      );
-      const nextItemId = collectionItems.length;
+      // Upload to IPFS first
+      let ipfsHash = "";
+      if (nftData.image) {
+        setProgress(40);
+        const metadata = {
+          name: nftData.name,
+          description: nftData.description,
+          attributes: nftData.attributes.filter(
+            (attr) => attr.key && attr.value
+          ),
+        };
 
-      setProgress(40);
+        ipfsHash = await uploadToIPFS(nftData.image, metadata);
+        setProgress(60);
+      }
 
-      // Create metadata (in real app, upload to IPFS)
-      const metadata = {
-        name: nftData.name,
-        description: nftData.description,
-        image: nftData.image ? "ipfs://placeholder" : null,
-        attributes: nftData.attributes.filter((attr) => attr.key && attr.value),
-      };
+      // Use a default collection ID (0) for simplicity
+      const collectionId = 0;
 
-      setProgress(60);
+      // Check if default collection exists, create if not
+      try {
+        const collectionInfo = await api.query.nfts.collection(collectionId);
+        if (collectionInfo.isNone) {
+          // Create default collection first
+          const createCollectionTx = api.tx.nfts.create(
+            collectionId,
+            polkadotAccount.address,
+            {
+              settings: 0,
+              maxSupply: null,
+              mintSettings: {
+                mintType: { Issuer: null },
+                price: null,
+                startBlock: null,
+                endBlock: null,
+                defaultItemSettings: 0,
+              },
+            }
+          );
+
+          await new Promise((resolve, reject) => {
+            createCollectionTx.signAndSend(
+              polkadotAccount.address,
+              { signer: injector.signer },
+              ({ status, dispatchError }) => {
+                if (dispatchError) {
+                  if (dispatchError.isModule) {
+                    const decoded = api.registry.findMetaError(
+                      dispatchError.asModule
+                    );
+                    reject(
+                      new Error(
+                        `${decoded.section}.${
+                          decoded.name
+                        }: ${decoded.docs.join(" ")}`
+                      )
+                    );
+                  } else {
+                    reject(new Error(dispatchError.toString()));
+                  }
+                  return;
+                }
+                if (status.isInBlock) {
+                  resolve(true);
+                }
+              }
+            );
+          });
+        }
+      } catch (error) {
+        console.log("Collection handling:", error);
+      }
+
+      // Get next available item ID
+      const itemEntries = await api.query.nfts.item.entries(collectionId);
+      const nextItemId = itemEntries.length;
+
+      setProgress(70);
 
       // Mint NFT transaction
       const tx = api.tx.nfts.mint(
-        selectedCollection,
+        collectionId,
         nextItemId,
         polkadotAccount.address, // to
         null // witness_data
@@ -446,69 +549,115 @@ const XCMNFTApp = () => {
 
       setProgress(80);
 
-      const txHash = await tx.signAndSend(
-        polkadotAccount.address,
-        { signer: injector.signer },
-        ({ status, events }) => {
-          if (status.isInBlock) {
-            console.log(`NFT mint included in block ${status.asInBlock}`);
+      await new Promise((resolve, reject) => {
+        tx.signAndSend(
+          polkadotAccount.address,
+          { signer: injector.signer },
+          ({ status, events, dispatchError }) => {
+            if (dispatchError) {
+              if (dispatchError.isModule) {
+                const decoded = api.registry.findMetaError(
+                  dispatchError.asModule
+                );
+                reject(
+                  new Error(
+                    `${decoded.section}.${decoded.name}: ${decoded.docs.join(
+                      " "
+                    )}`
+                  )
+                );
+              } else {
+                reject(new Error(dispatchError.toString()));
+              }
+              return;
+            }
 
-            // Create NFT metadata
-            const newNFT: NFTMetadata = {
-              id: nextItemId.toString(),
-              name: nftData.name,
-              description: nftData.description,
-              image: nftData.image ? URL.createObjectURL(nftData.image) : "🎨",
-              collection: selectedCollection,
-              chain: "AssetHub",
-              status: "minted",
-              owner: polkadotAccount.address,
-              txHash: txHash.toString(),
-              createdAt: new Date().toISOString(),
-              blockNumber: parseInt(status.asInBlock.toString()),
-            };
+            if (status.isInBlock) {
+              console.log(`NFT mint included in block ${status.asInBlock}`);
 
-            setMintedNFTs((prev) => [newNFT, ...prev]);
+              // Set metadata if we have IPFS hash
+              if (ipfsHash) {
+                const metadataBytes = stringToU8a(`ipfs://${ipfsHash}`);
+                const setMetadataTx = api.tx.nfts.setMetadata(
+                  collectionId,
+                  nextItemId,
+                  metadataBytes
+                );
 
-            // Add transaction
-            const newTransaction: Transaction = {
-              id: Date.now().toString(),
-              type: "mint",
-              status: "success",
-              from: "Asset Hub",
-              to: "Asset Hub",
-              hash: txHash.toString(),
-              timestamp: new Date().toISOString(),
-              nftId: nextItemId.toString(),
-              description: `Minted NFT: ${nftData.name}`,
-              blockNumber: parseInt(status.asInBlock.toString()),
-            };
+                setMetadataTx.signAndSend(
+                  polkadotAccount.address,
+                  { signer: injector.signer },
+                  ({ status: metadataStatus }) => {
+                    if (metadataStatus.isInBlock) {
+                      console.log("Metadata set successfully");
+                    }
+                  }
+                );
+              }
 
-            setTransactions((prev) => [newTransaction, ...prev]);
+              // Create NFT metadata
+              const newNFT: NFTMetadata = {
+                id: nextItemId.toString(),
+                name: nftData.name,
+                description: nftData.description,
+                image: nftData.image
+                  ? URL.createObjectURL(nftData.image)
+                  : "🎨",
+                chain: selectedChain,
+                status: "minted",
+                owner: polkadotAccount.address,
+                txHash: status.asInBlock.toString(),
+                createdAt: new Date().toISOString(),
+                ipfsHash: ipfsHash,
+                attributes: nftData.attributes.filter(
+                  (attr) => attr.key && attr.value
+                ),
+              };
 
-            // Reset form
-            setNftData({
-              name: "",
-              description: "",
-              image: null,
-              collection: "",
-              attributes: [],
-            });
+              setMintedNFTs((prev) => [newNFT, ...prev]);
 
-            setProgress(100);
-            setSuccess(`NFT "${newNFT.name}" minted successfully!`);
+              // Add transaction
+              const newTransaction: Transaction = {
+                id: Date.now().toString(),
+                type: "mint",
+                status: "success",
+                from: currentChain.id,
+                to: currentChain.id,
+                hash: status.asInBlock.toString(),
+                timestamp: new Date().toISOString(),
+                nftId: nextItemId.toString(),
+                description: `Minted NFT: ${nftData.name}`,
+              };
+
+              setTransactions((prev) => [newTransaction, ...prev]);
+
+              // Reset form
+              setNftData({
+                name: "",
+                description: "",
+                image: null,
+                attributes: [],
+              });
+
+              setProgress(100);
+              setSuccess(
+                `NFT "${newNFT.name}" minted successfully on ${currentChain.name}!`
+              );
+              resolve(true);
+            }
           }
-        }
-      );
+        );
+      });
     } catch (error: any) {
       console.error("Minting failed:", error);
       setError("Failed to mint NFT: " + error.message);
     } finally {
       setLoading(false);
+      setProgress(0);
     }
   };
 
-  // Transfer NFT using XCM
+  // Transfer NFT using real XCM
   const transferNFT = async () => {
     if (
       !transferData.nftId ||
@@ -520,68 +669,148 @@ const XCMNFTApp = () => {
       return;
     }
 
+    if (!api || !api.tx.xcmPallet) {
+      setError("XCM pallet not available on this chain");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
       const nft = mintedNFTs.find((n) => n.id === transferData.nftId);
-      const targetChain = chains.find((c) => c.id === transferData.targetChain);
+      const targetChain = CHAIN_CONFIGS.find(
+        (c) => c.id === transferData.targetChain
+      );
 
       if (!nft || !targetChain) {
         throw new Error("Invalid NFT or target chain");
       }
 
-      // Build XCM transfer using ParaSpell SDK
-      const xcmTransfer = Builder()
-        .from("AssetHub")
-        .to(transferData.targetChain as any)
-        .currency({
-          multilocation: {
-            parents: 0,
-            interior: {
-              X2: [
-                { PalletInstance: 50 }, // NFTs pallet
-                { GeneralIndex: parseInt(nft.collection) },
-              ],
+      const injector = await web3FromAddress(polkadotAccount.address);
+
+      // Build XCM message for NFT transfer
+      const destination = {
+        V3: {
+          parents: 1,
+          interior: {
+            X1: {
+              Parachain: targetChain.paraId,
             },
           },
-        })
-        .amount("1") // NFT quantity
-        .address(transferData.recipient)
-        .build();
+        },
+      };
 
-      console.log("XCM Transfer built:", xcmTransfer);
+      const beneficiary = {
+        V3: {
+          parents: 0,
+          interior: {
+            X1: {
+              AccountId32: {
+                network: null,
+                id: transferData.recipient,
+              },
+            },
+          },
+        },
+      };
 
-      // For demo purposes, simulate successful transfer
-      setTimeout(() => {
-        setMintedNFTs((prev) =>
-          prev.map((nftItem) =>
-            nftItem.id === transferData.nftId
-              ? {
-                  ...nftItem,
-                  chain: transferData.targetChain,
-                  status: "transferred",
-                }
-              : nftItem
-          )
+      const assets = {
+        V3: [
+          {
+            id: {
+              Concrete: {
+                parents: 0,
+                interior: {
+                  X2: [
+                    { PalletInstance: 50 }, // NFTs pallet
+                    { GeneralIndex: 0 }, // Default collection ID
+                  ],
+                },
+              },
+            },
+            fun: {
+              NonFungible: {
+                Index: parseInt(nft.id),
+              },
+            },
+          },
+        ],
+      };
+
+      const tx = api.tx.xcmPallet.limitedReserveTransferAssets(
+        destination,
+        beneficiary,
+        assets,
+        0, // fee_asset_item
+        { Unlimited: null } // weight_limit
+      );
+
+      await new Promise((resolve, reject) => {
+        tx.signAndSend(
+          polkadotAccount.address,
+          { signer: injector.signer },
+          ({ status, events, dispatchError }) => {
+            if (dispatchError) {
+              if (dispatchError.isModule) {
+                const decoded = api.registry.findMetaError(
+                  dispatchError.asModule
+                );
+                reject(
+                  new Error(
+                    `${decoded.section}.${decoded.name}: ${decoded.docs.join(
+                      " "
+                    )}`
+                  )
+                );
+              } else {
+                reject(new Error(dispatchError.toString()));
+              }
+              return;
+            }
+
+            if (status.isInBlock) {
+              console.log(`XCM transfer included in block ${status.asInBlock}`);
+
+              // Update NFT status
+              setMintedNFTs((prev) =>
+                prev.map((nftItem) =>
+                  nftItem.id === transferData.nftId
+                    ? {
+                        ...nftItem,
+                        chain: transferData.targetChain,
+                        status: "transferred",
+                      }
+                    : nftItem
+                )
+              );
+
+              const newTransaction: Transaction = {
+                id: Date.now().toString(),
+                type: "transfer",
+                status: "success",
+                from: currentChain.name,
+                to: targetChain.name,
+                hash: status.asInBlock.toString(),
+                timestamp: new Date().toISOString(),
+                nftId: nft.id,
+                description: `Transferred ${nft.name} to ${targetChain.name}`,
+              };
+
+              setTransactions((prev) => [newTransaction, ...prev]);
+              setTransferData({
+                nftId: "",
+                targetChain: "Hydration",
+                recipient: "",
+              });
+              setSuccess(
+                `NFT transferred successfully to ${targetChain.name}!`
+              );
+              resolve(true);
+            }
+          }
         );
-
-        const newTransaction: Transaction = {
-          id: Date.now().toString(),
-          type: "transfer",
-          status: "success",
-          from: "Asset Hub",
-          to: targetChain.name,
-          hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-          timestamp: new Date().toISOString(),
-          nftId: nft.id,
-          description: `Transferred ${nft.name} to ${targetChain.name}`,
-        };
-
-        setTransactions((prev) => [newTransaction, ...prev]);
-        setTransferData({ nftId: "", targetChain: "Hydration", recipient: "" });
-        setSuccess(`NFT transferred successfully to ${targetChain.name}!`);
-      }, 3000);
+      });
     } catch (error: any) {
       console.error("Transfer failed:", error);
       setError("Failed to transfer NFT: " + error.message);
@@ -601,7 +830,7 @@ const XCMNFTApp = () => {
     setError("");
 
     try {
-      // Build XCM swap using ParaSpell SDK
+      // Build XCM swap using ParaSpell SDK for Hydration
       const xcmSwap = Builder()
         .from("AssetHub")
         .to("Hydration")
@@ -612,7 +841,7 @@ const XCMNFTApp = () => {
 
       console.log("XCM Swap built:", xcmSwap);
 
-      // Simulate successful swap
+      // For demonstration - in real implementation, execute the swap
       setTimeout(() => {
         const newTransaction: Transaction = {
           id: Date.now().toString(),
@@ -627,7 +856,9 @@ const XCMNFTApp = () => {
         };
 
         setTransactions((prev) => [newTransaction, ...prev]);
-        fetchBalances(polkadotAccount.address);
+        if (api && polkadotAccount) {
+          fetchBalances(polkadotAccount.address, api);
+        }
         setSwapData({ ...swapData, amount: "" });
         setSuccess(
           `Successfully swapped ${swapData.amount} ${swapData.fromToken} for ${swapData.toToken}!`
@@ -646,7 +877,6 @@ const XCMNFTApp = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         setError("Image size must be less than 5MB");
         return;
       }
@@ -684,15 +914,25 @@ const XCMNFTApp = () => {
     }));
   };
 
-  // Copy to clipboard
+  // Copy to clipboard utility
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setSuccess("Copied to clipboard!");
   };
 
+  // Chain switching handler
+  const handleChainSwitch = async (chainId: string) => {
+    setSelectedChain(chainId);
+    const newChain = CHAIN_CONFIGS.find((c) => c.id === chainId);
+    if (newChain) {
+      setMintedNFTs([]);
+      await initializeAPI(newChain);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      {/* Header */}
+      {/* Single Unified Header */}
       <header className="border-b border-white/10 backdrop-blur-sm bg-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -702,46 +942,71 @@ const XCMNFTApp = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">
-                  XCM NFT Marketplace
+                  XCM NFT Bridge
                 </h1>
                 <p className="text-sm text-gray-300">
-                  Paseo Testnet | Cross-chain NFT & Token operations
+                  {currentChain.name} | Cross-chain NFT operations
                 </p>
               </div>
             </div>
 
-            {!walletConnected ? (
-              <Button
-                onClick={connectPolkadotWallet}
-                disabled={loading}
-                className="bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Wallet className="w-4 h-4 mr-2" />
-                )}
-                Connect Polkadot Wallet
-              </Button>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <div className="text-right text-sm">
-                  <p className="text-gray-300">DOT: {balances.dot}</p>
-                  <p className="text-gray-300">HDX: {balances.hdx}</p>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-green-500/20 text-green-400 cursor-pointer"
-                  onClick={() =>
-                    copyToClipboard(polkadotAccount?.address || "")
-                  }
+            <div className="flex items-center space-x-4">
+              {/* Chain Selector */}
+              <Select value={selectedChain} onValueChange={handleChainSwitch}>
+                <SelectTrigger className="w-48 bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHAIN_CONFIGS.map((chain) => (
+                    <SelectItem key={chain.id} value={chain.id}>
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className={`w-3 h-3 rounded-full ${chain.color}`}
+                        ></div>
+                        <span>{chain.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {!walletConnected ? (
+                <Button
+                  onClick={connectPolkadotWallet}
+                  disabled={loading}
+                  className="bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
                 >
-                  {polkadotAccount?.address?.slice(0, 6)}...
-                  {polkadotAccount?.address?.slice(-4)}
-                  <Copy className="w-3 h-3 ml-1" />
-                </Badge>
-              </div>
-            )}
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Wallet className="w-4 h-4 mr-2" />
+                  )}
+                  Connect Wallet
+                </Button>
+              ) : (
+                <div className="flex items-center space-x-4">
+                  <div className="text-right text-sm">
+                    <p className="text-gray-300">
+                      Balance: {balances.native} {currentChain.token}
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      Chain: {currentChain.name}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-500/20 text-green-400 cursor-pointer"
+                    onClick={() =>
+                      copyToClipboard(polkadotAccount?.address || "")
+                    }
+                  >
+                    {polkadotAccount?.address?.slice(0, 6)}...
+                    {polkadotAccount?.address?.slice(-4)}
+                    <Copy className="w-3 h-3 ml-1" />
+                  </Badge>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -752,8 +1017,10 @@ const XCMNFTApp = () => {
           <div className="mb-6">
             <Progress value={progress} className="w-full" />
             <p className="text-center text-sm text-gray-400 mt-2">
-              {progress < 50
+              {progress < 40
                 ? "Connecting to blockchain..."
+                : progress < 70
+                ? "Uploading to IPFS..."
                 : "Processing transaction..."}
             </p>
           </div>
@@ -793,6 +1060,31 @@ const XCMNFTApp = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Connection Status */}
+        <Card className="mb-6 bg-white/10 border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    api ? "bg-green-400" : "bg-red-400"
+                  }`}
+                ></div>
+                <span className="text-white">
+                  {api
+                    ? `Connected to ${currentChain.name}`
+                    : `Connecting to ${currentChain.name}...`}
+                </span>
+              </div>
+              <div className="flex items-center space-x-4 text-sm text-gray-300">
+                <span>NFTs: {mintedNFTs.length}</span>
+                <span>Transactions: {transactions.length}</span>
+                <span>Token: {currentChain.token}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main Content */}
         <Tabs
@@ -838,89 +1130,17 @@ const XCMNFTApp = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Mint NFT Tab */}
+          {/* Mint NFT Tab - Simplified */}
           <TabsContent value="mint">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3">
                 <Card className="bg-white/10 border-white/20">
                   <CardHeader>
                     <CardTitle className="text-white">
-                      Mint NFT on Paseo Asset Hub
+                      Mint NFT on {currentChain.name}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Collection Selection */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-gray-300">
-                          Collection
-                        </label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setShowCreateCollection(!showCreateCollection)
-                          }
-                          className="border-white/20 text-white"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          New Collection
-                        </Button>
-                      </div>
-
-                      {showCreateCollection && (
-                        <Card className="bg-white/5 border-white/20">
-                          <CardContent className="p-4 space-y-4">
-                            <Input
-                              value={newCollectionName}
-                              onChange={(e) =>
-                                setNewCollectionName(e.target.value)
-                              }
-                              placeholder="Enter collection name"
-                              className="bg-white/5 border-white/20 text-white"
-                            />
-                            <div className="flex space-x-2">
-                              <Button
-                                onClick={createCollection}
-                                disabled={loading || !newCollectionName.trim()}
-                                size="sm"
-                                className="bg-purple-500 hover:bg-purple-600"
-                              >
-                                Create
-                              </Button>
-                              <Button
-                                onClick={() => setShowCreateCollection(false)}
-                                variant="outline"
-                                size="sm"
-                                className="border-white/20 text-white"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      <Select
-                        value={selectedCollection}
-                        onValueChange={setSelectedCollection}
-                      >
-                        <SelectTrigger className="bg-white/5 border-white/20 text-white">
-                          <SelectValue placeholder="Select a collection" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {collections.map((collection) => (
-                            <SelectItem
-                              key={collection.id}
-                              value={collection.id}
-                            >
-                              {collection.name} (ID: {collection.id})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
@@ -962,7 +1182,7 @@ const XCMNFTApp = () => {
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <label className="block text-sm font-medium text-gray-300">
-                              Attributes
+                              Attributes (Optional)
                             </label>
                             <Button
                               type="button"
@@ -979,7 +1199,7 @@ const XCMNFTApp = () => {
                             {nftData.attributes.map((attr, index) => (
                               <div key={index} className="flex space-x-2">
                                 <Input
-                                  placeholder="Key"
+                                  placeholder="Trait Type"
                                   value={attr.key}
                                   onChange={(e) =>
                                     updateAttribute(
@@ -1009,7 +1229,7 @@ const XCMNFTApp = () => {
                                   onClick={() => removeAttribute(index)}
                                   className="border-red-500/20 text-red-400 hover:bg-red-500/20"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             ))}
@@ -1072,13 +1292,12 @@ const XCMNFTApp = () => {
                               Minting Info
                             </h3>
                             <div className="text-sm text-blue-200 space-y-1">
-                              <p>
-                                • Collection:{" "}
-                                {selectedCollection || "Not selected"}
-                              </p>
-                              <p>• Chain: Paseo Asset Hub</p>
+                              <p>• Chain: {currentChain.name}</p>
+                              <p>• Token: {currentChain.token}</p>
                               <p>• NFT Standard: Substrate NFTs pallet</p>
-                              <p>• Estimated fee: ~0.1 DOT</p>
+                              <p>• Storage: IPFS via Pinata</p>
+                              <p>• Collection: Default (Auto-created)</p>
+                              <p>• Estimated fee: ~0.1 {currentChain.token}</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -1092,7 +1311,8 @@ const XCMNFTApp = () => {
                         loading ||
                         !nftData.name ||
                         !nftData.description ||
-                        !selectedCollection
+                        !api ||
+                        !api.tx.nfts
                       }
                       className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
                     >
@@ -1101,8 +1321,16 @@ const XCMNFTApp = () => {
                       ) : (
                         <Image className="w-4 h-4 mr-2" />
                       )}
-                      {loading ? "Minting NFT..." : "Mint NFT on Asset Hub"}
+                      {loading
+                        ? "Minting NFT..."
+                        : `Mint NFT on ${currentChain.name}`}
                     </Button>
+
+                    {!api?.tx.nfts && (
+                      <p className="text-yellow-400 text-sm text-center">
+                        NFTs pallet not available on {currentChain.name}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1112,29 +1340,44 @@ const XCMNFTApp = () => {
                 <Card className="bg-white/10 border-white/20">
                   <CardHeader>
                     <CardTitle className="text-white text-lg">
-                      Collections
+                      Chain Info
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {collections.length === 0 ? (
-                      <p className="text-gray-400 text-sm">
-                        No collections found
-                      </p>
-                    ) : (
-                      collections.map((collection) => (
-                        <div
-                          key={collection.id}
-                          className="p-2 bg-white/5 rounded"
-                        >
-                          <p className="text-white text-sm font-medium">
-                            {collection.name}
-                          </p>
-                          <p className="text-gray-400 text-xs">
-                            ID: {collection.id}
-                          </p>
-                        </div>
-                      ))
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-300 text-sm">Network</span>
+                      <span className="text-white text-sm">
+                        {currentChain.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300 text-sm">Token</span>
+                      <span className="text-white text-sm">
+                        {currentChain.token}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300 text-sm">Para ID</span>
+                      <span className="text-white text-sm">
+                        {currentChain.paraId || "Relay Chain"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300 text-sm">Balance</span>
+                      <span className="text-white text-sm">
+                        {balances.native} {currentChain.token}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300 text-sm">Status</span>
+                      <span
+                        className={`text-sm ${
+                          api ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {api ? "Connected" : "Disconnected"}
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1152,15 +1395,29 @@ const XCMNFTApp = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300 text-sm">Collections</span>
+                      <span className="text-gray-300 text-sm">Transfers</span>
                       <span className="text-white text-sm">
-                        {collections.length}
+                        {
+                          transactions.filter((tx) => tx.type === "transfer")
+                            .length
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300 text-sm">Balance</span>
+                      <span className="text-gray-300 text-sm">
+                        Success Rate
+                      </span>
                       <span className="text-white text-sm">
-                        {balances.dot} DOT
+                        {transactions.length > 0
+                          ? Math.round(
+                              (transactions.filter(
+                                (tx) => tx.status === "success"
+                              ).length /
+                                transactions.length) *
+                                100
+                            )
+                          : 100}
+                        %
                       </span>
                     </div>
                   </CardContent>
@@ -1195,7 +1452,7 @@ const XCMNFTApp = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {mintedNFTs
-                            .filter((nft) => nft.chain === "AssetHub")
+                            .filter((nft) => nft.chain === selectedChain)
                             .map((nft) => (
                               <SelectItem key={nft.id} value={nft.id}>
                                 {nft.name} (#{nft.id})
@@ -1222,13 +1479,13 @@ const XCMNFTApp = () => {
                           <SelectValue placeholder="Select target chain" />
                         </SelectTrigger>
                         <SelectContent>
-                          {chains
-                            .filter((chain) => chain.id !== "AssetHub")
-                            .map((chain) => (
-                              <SelectItem key={chain.id} value={chain.id}>
-                                {chain.name}
-                              </SelectItem>
-                            ))}
+                          {CHAIN_CONFIGS.filter(
+                            (chain) => chain.id !== selectedChain
+                          ).map((chain) => (
+                            <SelectItem key={chain.id} value={chain.id}>
+                              {chain.name} ({chain.token})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1249,7 +1506,7 @@ const XCMNFTApp = () => {
                         className="bg-white/5 border-white/20 text-white"
                       />
                       <p className="text-xs text-gray-400 mt-1">
-                        Address format depends on target chain
+                        Use the full SS58 address for the target chain
                       </p>
                     </div>
                   </div>
@@ -1261,21 +1518,21 @@ const XCMNFTApp = () => {
                           XCM Transfer Flow
                         </h3>
                         <div className="flex items-center space-x-4 text-sm text-blue-200 mb-3">
-                          <span>Asset Hub</span>
+                          <span>{currentChain.name}</span>
                           <ArrowRight className="w-4 h-4" />
                           <span>XCM</span>
                           <ArrowRight className="w-4 h-4" />
                           <span>
-                            {chains.find(
+                            {CHAIN_CONFIGS.find(
                               (c) => c.id === transferData.targetChain
                             )?.name || "Target"}
                           </span>
                         </div>
                         <div className="text-xs text-blue-300 space-y-1">
-                          <p>• Uses ParaSpell SDK for XCM construction</p>
-                          <p>• Secure cross-chain asset transfer</p>
+                          <p>• Real XCM cross-chain transfer</p>
                           <p>• NFT ownership preserved</p>
-                          <p>• Estimated fee: ~0.2 DOT</p>
+                          <p>• Blockchain-verified transaction</p>
+                          <p>• Estimated fee: ~0.2 {currentChain.token}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -1296,10 +1553,13 @@ const XCMNFTApp = () => {
                                   Name: {selectedNFT.name}
                                 </p>
                                 <p className="text-sm text-gray-300">
-                                  Collection: #{selectedNFT.collection}
+                                  Token ID: #{selectedNFT.id}
                                 </p>
                                 <p className="text-sm text-gray-300">
                                   Status: {selectedNFT.status}
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  Current Chain: {selectedNFT.chain}
                                 </p>
                               </div>
                             ) : null;
@@ -1316,7 +1576,9 @@ const XCMNFTApp = () => {
                     !walletConnected ||
                     loading ||
                     !transferData.nftId ||
-                    !transferData.recipient
+                    !transferData.recipient ||
+                    !api ||
+                    !api.tx.xcmPallet
                   }
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                 >
@@ -1327,6 +1589,12 @@ const XCMNFTApp = () => {
                   )}
                   {loading ? "Transferring..." : "Transfer via XCM"}
                 </Button>
+
+                {!api?.tx.xcmPallet && (
+                  <p className="text-yellow-400 text-sm text-center">
+                    XCM pallet not available on {currentChain.name}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1413,8 +1681,8 @@ const XCMNFTApp = () => {
                       />
                       <p className="text-xs text-gray-400 mt-1">
                         Available:{" "}
-                        {swapData.fromToken === "DOT"
-                          ? balances.dot
+                        {swapData.fromToken === "PAS"
+                          ? balances.native
                           : balances.hdx}{" "}
                         {swapData.fromToken}
                       </p>
@@ -1518,7 +1786,9 @@ const XCMNFTApp = () => {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Network fee:</span>
-                            <span className="text-white">~0.1 DOT</span>
+                            <span className="text-white">
+                              ~0.1 {currentChain.token}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -1554,15 +1824,17 @@ const XCMNFTApp = () => {
                 {mintedNFTs.length === 0 ? (
                   <div className="text-center py-12">
                     <Image className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg">No NFTs minted yet</p>
+                    <p className="text-gray-400 text-lg">No NFTs found</p>
                     <p className="text-gray-500">
-                      Start by minting your first NFT!
+                      Mint your first NFT on {currentChain.name}!
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {mintedNFTs.map((nft) => {
-                      const chain = chains.find((c) => c.id === nft.chain);
+                      const chain = CHAIN_CONFIGS.find(
+                        (c) => c.id === nft.chain
+                      );
                       return (
                         <Card
                           key={nft.id}
@@ -1598,11 +1870,16 @@ const XCMNFTApp = () => {
 
                             <div className="space-y-1 text-xs text-gray-400 mb-4">
                               <p>Token ID: #{nft.id}</p>
-                              <p>Collection: #{nft.collection}</p>
                               <p>
                                 Created:{" "}
                                 {new Date(nft.createdAt).toLocaleDateString()}
                               </p>
+                              {nft.ipfsHash && (
+                                <p>IPFS: {nft.ipfsHash.slice(0, 10)}...</p>
+                              )}
+                              {nft.attributes && nft.attributes.length > 0 && (
+                                <p>Attributes: {nft.attributes.length}</p>
+                              )}
                             </div>
 
                             <div className="flex items-center justify-between">
@@ -1631,7 +1908,7 @@ const XCMNFTApp = () => {
                                     size="sm"
                                     className="text-purple-400 hover:text-purple-300 p-1"
                                     onClick={() => {
-                                      const chain = chains.find(
+                                      const chain = CHAIN_CONFIGS.find(
                                         (c) => c.id === nft.chain
                                       );
                                       if (chain && nft.txHash) {
@@ -1651,7 +1928,7 @@ const XCMNFTApp = () => {
                                   className="text-gray-400 hover:text-gray-300 p-1"
                                   onClick={() =>
                                     copyToClipboard(
-                                      `NFT: ${nft.name}\nID: ${nft.id}\nCollection: ${nft.collection}`
+                                      `NFT: ${nft.name}\nID: ${nft.id}\nChain: ${nft.chain}`
                                     )
                                   }
                                 >
@@ -1696,8 +1973,7 @@ const XCMNFTApp = () => {
                           <div className="flex items-center space-x-4">
                             <div
                               className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                tx.type === "mint" ||
-                                tx.type === "create_collection"
+                                tx.type === "mint"
                                   ? "bg-green-500/20"
                                   : tx.type === "transfer"
                                   ? "bg-blue-500/20"
@@ -1706,8 +1982,6 @@ const XCMNFTApp = () => {
                             >
                               {tx.type === "mint" ? (
                                 <Image className="w-5 h-5 text-green-400" />
-                              ) : tx.type === "create_collection" ? (
-                                <Plus className="w-5 h-5 text-green-400" />
                               ) : tx.type === "transfer" ? (
                                 <Send className="w-5 h-5 text-blue-400" />
                               ) : (
@@ -1762,7 +2036,7 @@ const XCMNFTApp = () => {
                               className="text-purple-400 hover:text-purple-300 p-1"
                               onClick={() => {
                                 window.open(
-                                  `https://paseo.subscan.io/extrinsic/${tx.hash}`,
+                                  `${currentChain.explorer}/extrinsic/${tx.hash}`,
                                   "_blank"
                                 );
                               }}
@@ -1794,18 +2068,18 @@ const XCMNFTApp = () => {
           <Card className="bg-white/10 border-white/20">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-white">
-                {collections.length}
+                {transactions.filter((tx) => tx.type === "transfer").length}
               </div>
-              <div className="text-sm text-gray-400">Collections</div>
+              <div className="text-sm text-gray-400">XCM Transfers</div>
             </CardContent>
           </Card>
 
           <Card className="bg-white/10 border-white/20">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-white">
-                {transactions.filter((tx) => tx.type === "transfer").length}
+                {balances.native} {currentChain.token}
               </div>
-              <div className="text-sm text-gray-400">XCM Transfers</div>
+              <div className="text-sm text-gray-400">Balance</div>
             </CardContent>
           </Card>
 
@@ -1834,7 +2108,7 @@ const XCMNFTApp = () => {
               <CardTitle className="text-white">Chain Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {chains.map((chain) => (
+              {CHAIN_CONFIGS.map((chain) => (
                 <div
                   key={chain.id}
                   className="flex items-center justify-between"
@@ -1844,6 +2118,9 @@ const XCMNFTApp = () => {
                       className={`w-3 h-3 rounded-full ${chain.color}`}
                     ></div>
                     <span className="text-white">{chain.name}</span>
+                    <span className="text-xs text-gray-400">
+                      ({chain.token})
+                    </span>
                     {chain.paraId && (
                       <span className="text-xs text-gray-400">
                         #{chain.paraId}
@@ -1851,8 +2128,24 @@ const XCMNFTApp = () => {
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                    <span className="text-xs text-green-400">Online</span>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        chain.id === selectedChain && api
+                          ? "bg-green-400"
+                          : "bg-gray-400"
+                      }`}
+                    ></div>
+                    <span
+                      className={`text-xs ${
+                        chain.id === selectedChain && api
+                          ? "text-green-400"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {chain.id === selectedChain && api
+                        ? "Connected"
+                        : "Available"}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -1871,19 +2164,19 @@ const XCMNFTApp = () => {
               <div className="space-y-2 text-sm text-gray-300 mb-4">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>Secure cross-chain transfers</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>ParaSpell SDK integration</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>Paseo testnet support</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
                   <span>Real blockchain integration</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>IPFS metadata storage</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>Cross-chain NFT transfers</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span>Simplified collection-free minting</span>
                 </div>
               </div>
               <Button
@@ -1904,6 +2197,27 @@ const XCMNFTApp = () => {
           </Card>
         </div>
 
+        {/* Environment Variables Notice */}
+        {(!process.env.NEXT_PUBLIC_PINATA_API_KEY ||
+          !process.env.NEXT_PUBLIC_PINATA_SECRET_KEY) && (
+          <Card className="bg-yellow-500/20 border-yellow-500/30 mt-6">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-yellow-400" />
+                <div>
+                  <p className="text-yellow-400 font-medium">
+                    Environment Variables Required
+                  </p>
+                  <p className="text-yellow-300 text-sm">
+                    Please set NEXT_PUBLIC_PINATA_API_KEY and
+                    NEXT_PUBLIC_PINATA_SECRET_KEY to enable IPFS uploads
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Network Information */}
         <Card className="bg-white/10 border-white/20 mt-6">
           <CardHeader>
@@ -1920,7 +2234,7 @@ const XCMNFTApp = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-300">Token:</span>
-                    <span className="text-white">PAS</span>
+                    <span className="text-white">PAS (Paseo)</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-300">Decimals:</span>
@@ -1964,7 +2278,9 @@ const XCMNFTApp = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-300">Balance:</span>
-                    <span className="text-white">{balances.dot} DOT</span>
+                    <span className="text-white">
+                      {balances.native} {currentChain.token}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-300">Transactions:</span>
