@@ -8,7 +8,10 @@ const LendingTokenModule = buildModule('LendingTokenModule', (m) => {
     const name = m.getParameter('name', 'LendingToken');
     const symbol = m.getParameter('symbol', 'LTK');
 
-    const lendingToken = m.contract('MyToken', [initialSupply, name, symbol], { id: 'LendingToken' });
+    const lendingToken = m.contract('MockERC20', [name, symbol], { id: 'LendingToken' });
+
+    const owner = m.getAccount(0);
+    m.call(lendingToken, 'mint', [owner, initialSupply]);
 
     return { lendingToken };
 });

@@ -8,8 +8,10 @@ const CollateralTokenModule = buildModule('CollateralTokenModule', (m) => {
     const name = m.getParameter('name', 'CollateralToken');
     const symbol = m.getParameter('symbol', 'CTK');
 
-    const collateralToken = m.contract('MyToken', [initialSupply, name, symbol], { id: 'CollateralToken' });
+    const collateralToken = m.contract('MockERC20', [name, symbol], { id: 'CollateralToken' });
 
+    const owner = m.getAccount(0);
+    m.call(collateralToken, 'mint', [owner, initialSupply]);
 
     return { collateralToken };
 });

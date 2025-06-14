@@ -21,42 +21,48 @@ describe("LendingBorrowing", function () {
     beforeEach(async function () {
         [owner, user1, user2] = await hre.ethers.getSigners();
 
-        // TODO: Deploy Collateral tokens
-        // - Deploy MockERC20 for collateral token
-        // - Set name and symbol
+        // Deploy MockERC20 for collateral token
+        const CollateralToken = await ethers.getContractFactory("MockERC20");
+        collateralToken = await CollateralToken.deploy("Collateral Token", "CTK");
 
-        // TODO: Deploy Lending tokens
-        // - Deploy MockERC20 for lending token
-        // - Set name and symbol
+        // Deploy MockERC20 for lending token
+        const LendingToken = await ethers.getContractFactory("MockERC20");
+        lendingToken = await LendingToken.deploy("Lending Token", "LTK");
 
-        // TODO: Mint initial supply
-        // - Mint tokens to owner
-        // - Mint lending tokens to owner
+        // Mint initial supply
+        await collateralToken.mint(owner.address, INITIAL_SUPPLY);
+        await lendingToken.mint(owner.address, INITIAL_SUPPLY);
 
-        // TODO: Deploy LendingBorrowing contract
-        // - Deploy with correct parameters
-        // - Pass token addresses and collateral factor
+        // Deploy LendingBorrowing contract
+        const LendingBorrowing = await ethers.getContractFactory("LendingBorrowing");
+        lendingBorrowing = await LendingBorrowing.deploy(
+            collateralToken.getAddress(),
+            lendingToken.getAddress(),
+            COLLATERAL_FACTOR
+        );
 
-        // TODO: Setup test environment
-        // - Transfer tokens to users
-        // - Transfer lending tokens to contract
+        // Setup test environment
+        await collateralToken.transfer(user1.address, ethers.parseEther("1000"));
+        await collateralToken.transfer(user2.address, ethers.parseEther("1000"));
+        await lendingToken.transfer(await lendingBorrowing.getAddress(), ethers.parseEther("10000"));
     });
 
     describe("Contract Deployment", function () {
         it("Should set the correct collateral factor", async function () {
-            // TODO: Test collateral factor is set correctly
+            expect(await lendingBorrowing.collateralFactor()).to.equal(COLLATERAL_FACTOR);
         });
 
         it("Should set the correct token addresses", async function () {
-            // TODO: Test token addresses are set correctly
+            expect(await lendingBorrowing.collateralToken()).to.equal(await collateralToken.getAddress());
+            expect(await lendingBorrowing.lendingToken()).to.equal(await lendingToken.getAddress());
         });
 
         it("Check balance of user1", async function () {
-            // TODO: Test user1 has correct collateral token balance
+            expect(await collateralToken.balanceOf(user1.address)).to.equal(ethers.parseEther("1000"));
         });
 
         it("Check balance of lendingBorrowing", async function () {
-            // TODO: Test contract has correct lending token balance
+            expect(await lendingToken.balanceOf(await lendingBorrowing.getAddress())).to.equal(ethers.parseEther("10000"));
         });
     });
 
@@ -64,34 +70,38 @@ describe("LendingBorrowing", function () {
         const depositAmount: bigint = ethers.parseUnits("100", 18);
 
         beforeEach(async function () {
-            // TODO: Approve tokens for deposit
+            await collateralToken.connect(user1).approve(await lendingBorrowing.getAddress(), depositAmount);
         });
 
         it("Should allow users to deposit collateral", async function () {
-            // TODO: Test collateral deposit
-            // - Call depositCollateral
-            // - Check event emission
-            // - Verify balance update
+            await expect(lendingBorrowing.connect(user1).depositCollateral(depositAmount))
+                .to.emit(lendingBorrowing, "CollateralDeposited")
+                .withArgs(user1.address, depositAmount);
+            
+            expect(await lendingBorrowing.collateralBalances(user1.address)).to.equal(depositAmount);
         });
 
         it("Should not allow zero amount deposits", async function () {
-            // TODO: Test zero amount deposit should revert
+            await expect(lendingBorrowing.connect(user1).depositCollateral(0))
+                .to.be.revertedWith("Amount must be > 0");
         });
 
         it("Should allow users to withdraw collateral if no active loan", async function () {
-            // TODO: Test collateral withdrawal
-            // - Deposit collateral first
-            // - Withdraw collateral
-            // - Check event emission
-            // - Verify balance update
+            await lendingBorrowing.connect(user1).depositCollateral(depositAmount);
+            await expect(lendingBorrowing.connect(user1).withdrawCollateral(depositAmount))
+                .to.emit(lendingBorrowing, "CollateralWithdrawn")
+                .withArgs(user1.address, depositAmount);
+            
+            expect(await lendingBorrowing.collateralBalances(user1.address)).to.equal(0);
         });
 
         it("Should not allow withdrawal of locked collateral", async function () {
-            // TODO: Test locked collateral withdrawal
-            // - Deposit collateral
-            // - Take loan
-            // - Try to withdraw locked collateral
-            // - Should revert
+            await lendingBorrowing.connect(user1).depositCollateral(depositAmount);
+            await lendingToken.connect(user1).approve(await lendingBorrowing.getAddress(), depositAmount);
+            await lendingBorrowing.connect(user1).takeLoan(ethers.parseEther("40"));
+            
+            await expect(lendingBorrowing.connect(user1).withdrawCollateral(depositAmount))
+                .to.be.revertedWith("Cant withdraw collateral");
         });
     });
 
@@ -100,60 +110,65 @@ describe("LendingBorrowing", function () {
         const loanAmount: bigint = ethers.parseEther("40");
 
         beforeEach(async function () {
-            // TODO: Setup for loan tests
-            // - Approve collateral tokens
-            // - Deposit collateral
+            await collateralToken.connect(user1).approve(await lendingBorrowing.getAddress(), collateralAmount);
+            await lendingBorrowing.connect(user1).depositCollateral(collateralAmount);
         });
 
         it("Should allow users to take loans within collateral limit", async function () {
-            // TODO: Test taking loan
-            // - Take loan within limit
-            // - Check event emission
-            // - Verify loan details
+            await expect(lendingBorrowing.connect(user1).takeLoan(loanAmount))
+                .to.emit(lendingBorrowing, "LoanTaken")
+                .withArgs(user1.address, loanAmount);
+
+            const loanDetails = await lendingBorrowing.getLoanDetails(user1.address);
+            expect(loanDetails.amount).to.equal(loanAmount);
+            expect(loanDetails.isActive).to.be.true;
         });
 
         it("Should not allow loans exceeding collateral limit", async function () {
-            // TODO: Test excessive loan should revert
+            const excessiveLoanAmount = ethers.parseEther("60"); // More than 50% collateral factor
+            await expect(lendingBorrowing.connect(user1).takeLoan(excessiveLoanAmount))
+                .to.be.revertedWith("Loan exceeds collateral limit");
         });
 
         it("Should not allow multiple active loans", async function () {
-            // TODO: Test multiple loans should revert
-            // - Take first loan
-            // - Try to take second loan
-            // - Should revert
+            await lendingBorrowing.connect(user1).takeLoan(loanAmount);
+            await expect(lendingBorrowing.connect(user1).takeLoan(loanAmount))
+                .to.be.revertedWith("Existing loan must be repaid first");
         });
 
         it("Should allow users to repay loans", async function () {
-            // TODO: Test loan repayment
-            // - Take loan first
-            // - Approve repayment tokens
-            // - Repay loan
-            // - Check event emission
-            // - Verify loan status
+            await lendingBorrowing.connect(user1).takeLoan(loanAmount);
+            await lendingToken.connect(user1).approve(await lendingBorrowing.getAddress(), loanAmount);
+
+            await expect(lendingBorrowing.connect(user1).repayLoan(loanAmount))
+                .to.emit(lendingBorrowing, "LoanRepaid")
+                .withArgs(user1.address, loanAmount);
+
+            const loanDetails = await lendingBorrowing.getLoanDetails(user1.address);
+            expect(loanDetails.isActive).to.be.false;
         });
 
         it("Should not allow repayment of non-existent loans", async function () {
-            // TODO: Test repaying non-existent loan should revert
+            await expect(lendingBorrowing.connect(user1).repayLoan(loanAmount))
+                .to.be.revertedWith("No active loan");
         });
     });
 
     describe("Owner Functions", function () {
         it("Should allow owner to change collateral factor", async function () {
-            // TODO: Test changing collateral factor
-            // - Call setCollateralFactor as owner
-            // - Verify factor is updated
+            const newFactor = 60n;
+            await lendingBorrowing.setCollateralFactor(newFactor);
+            expect(await lendingBorrowing.collateralFactor()).to.equal(newFactor);
         });
 
         it("Should not allow non-owners to change collateral factor", async function () {
-            // TODO: Test non-owner cannot change factor
-            // - Call setCollateralFactor as non-owner
-            // - Should revert with unauthorized error
+            await expect(lendingBorrowing.connect(user1).setCollateralFactor(60))
+                .to.be.revertedWithCustomError(lendingBorrowing, "OwnableUnauthorizedAccount");
         });
 
         it("Should not allow collateral factor greater than 100", async function () {
-            // TODO: Test invalid collateral factor
-            // - Try to set factor > 100
-            // - Should revert
+            await expect(lendingBorrowing.setCollateralFactor(101))
+                .to.be.revertedWith("Collatereal Factor must be <= 100");
         });
     });
 });
