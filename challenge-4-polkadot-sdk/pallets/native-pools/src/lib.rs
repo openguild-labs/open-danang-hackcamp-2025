@@ -13,8 +13,9 @@ use polkadot_sdk::frame_support::{
 	PalletId,
 };
 use polkadot_sdk::sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero}
+	traits::{AccountIdConversion, Saturating, Zero, SaturatedConversion}
 };
+use polkadot_sdk::frame_support::ensure;
 
 // Re-export all pallet parts, this is needed to properly import the pallet into the runtime.
 pub use pallet::*;
@@ -115,19 +116,49 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			// TODO: Implement deposit functionality
-			// 1. Ensure origin is signed
-			// 2. Validate amount > 0 and user has sufficient balance
-			// 3. Update pool state
-			// 4. Transfer tokens from user to pool account
-			// 5. Update or create user's deposit info with proper reward_debt
-			// 6. Update total deposited amount
-			// 
-			// Hints:
-			// - Use Self::update_pool() before modifying state
-			// - Calculate reward_debt = amount × AccRewardPerShare / precision
-			// - Use Deposits::<T>::mutate() to handle existing vs new deposits
-			todo!()
+			let who = frame_system::Pallet::<T>::ensure_signed(origin)?;
+			ensure!(!amount.is_zero(), Error::<T>::ZeroAmount);
+
+			let free_balance = T::Currency::free_balance(&who);
+			ensure!(free_balance >= amount, Error::<T>::InsufficientBalance);
+
+			Self::update_pool()?;
+
+			let pool_account = Self::account_id();
+			T::Currency::transfer(&who, &pool_account, amount, ExistenceRequirement::AllowDeath)?;
+
+			let pending = Self::calculate_pending_rewards(&who).unwrap_or_default();
+			if !pending.is_zero() {
+				let pool_balance = T::Currency::free_balance(&pool_account);
+				ensure!(pool_balance >= pending, Error::<T>::InsufficientPoolBalance);
+				T::Currency::transfer(&pool_account, &who, pending, ExistenceRequirement::AllowDeath)?;
+				TotalRewards::<T>::mutate(|r| *r = r.saturating_sub(pending));
+			}
+
+			let acc_per_share = Self::acc_reward_per_share();
+			let precision = Self::precision();
+
+			Deposits::<T>::mutate(&who, |maybe_info| {
+				match maybe_info {
+					Some(info) => {
+						info.amount = info.amount.saturating_add(amount);
+						info.reward_debt = acc_per_share.saturating_mul(info.amount) / precision;
+						info.deposit_block = frame_system::Pallet::<T>::block_number();
+					},
+					None => {
+						let reward_debt = acc_per_share.saturating_mul(amount) / precision;
+						*maybe_info = Some(DepositInfo {
+							amount,
+							deposit_block: frame_system::Pallet::<T>::block_number(),
+							reward_debt,
+						});
+					},
+				}
+			});
+
+			TotalDeposited::<T>::mutate(|v| *v = v.saturating_add(amount));
+
+			Ok(())
 		}
 
 		/// Withdraw tokens and rewards from the pool
@@ -141,21 +172,38 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			amount: Option<BalanceOf<T>>,
 		) -> DispatchResult {
-			// TODO: Implement withdraw functionality
-			// 1. Ensure origin is signed and user has deposit
-			// 2. Update pool state
-			// 3. Calculate pending rewards
-			// 4. Determine withdrawal amount (use deposit amount if None)
-			// 5. Validate withdrawal amount and pool balance
-			// 6. Update user's deposit info (remove if full withdrawal)
-			// 7. Update total deposited
-			// 8. Transfer tokens + rewards back to user
-			//
-			// Hints:
-			// - total_withdrawal = withdraw_amount + pending_rewards
-			// - For partial withdrawal, recalculate reward_debt for remaining amount
-			// - Use Deposits::<T>::remove() for full withdrawal
-			todo!()
+			let who = frame_system::Pallet::<T>::ensure_signed(origin)?;
+			let mut info = Deposits::<T>::get(&who).ok_or(Error::<T>::NoDeposit)?;
+
+			Self::update_pool()?;
+
+			let acc_per_share = Self::acc_reward_per_share();
+			let precision = Self::precision();
+			let pending = Self::calculate_pending_rewards(&who)?;
+
+			let withdraw_amount = amount.unwrap_or(info.amount);
+			ensure!(!withdraw_amount.is_zero(), Error::<T>::ZeroAmount);
+			ensure!(withdraw_amount <= info.amount, Error::<T>::InsufficientBalance);
+
+			let pool_account = Self::account_id();
+			let pool_balance = T::Currency::free_balance(&pool_account);
+			let total_payout = withdraw_amount.saturating_add(pending);
+			ensure!(pool_balance >= total_payout, Error::<T>::InsufficientPoolBalance);
+
+			info.amount = info.amount.saturating_sub(withdraw_amount);
+			if info.amount.is_zero() {
+				Deposits::<T>::remove(&who);
+			} else {
+				info.reward_debt = acc_per_share.saturating_mul(info.amount) / precision;
+				Deposits::<T>::insert(&who, &info);
+			}
+
+			TotalDeposited::<T>::mutate(|v| *v = v.saturating_sub(withdraw_amount));
+			TotalRewards::<T>::mutate(|r| *r = r.saturating_sub(pending));
+
+			T::Currency::transfer(&pool_account, &who, total_payout, ExistenceRequirement::AllowDeath)?;
+
+			Ok(())
 		}
 
 		/// Claim pending rewards without withdrawing deposit
@@ -164,18 +212,27 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		#[pallet::weight({10_000})]
 		pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResult {
-			// TODO: Implement claim_rewards functionality
-			// 1. Ensure origin is signed and user has deposit
-			// 2. Update pool state
-			// 3. Calculate pending rewards
-			// 4. Validate rewards > 0 and pool has sufficient balance
-			// 5. Update user's reward_debt to current level
-			// 6. Transfer rewards to user
-			//
-			// Hints:
-			// - Only transfer rewards, keep deposit amount unchanged
-			// - Update reward_debt = amount × AccRewardPerShare / precision
-			todo!()
+			let who = frame_system::Pallet::<T>::ensure_signed(origin)?;
+			let mut info = Deposits::<T>::get(&who).ok_or(Error::<T>::NoDeposit)?;
+
+			Self::update_pool()?;
+
+			let pending = Self::calculate_pending_rewards(&who)?;
+			ensure!(!pending.is_zero(), Error::<T>::ZeroAmount);
+
+			let pool_account = Self::account_id();
+			let pool_balance = T::Currency::free_balance(&pool_account);
+			ensure!(pool_balance >= pending, Error::<T>::InsufficientPoolBalance);
+
+			let acc_per_share = Self::acc_reward_per_share();
+			let precision = Self::precision();
+			info.reward_debt = acc_per_share.saturating_mul(info.amount) / precision;
+			Deposits::<T>::insert(&who, &info);
+
+			TotalRewards::<T>::mutate(|r| *r = r.saturating_sub(pending));
+			T::Currency::transfer(&pool_account, &who, pending, ExistenceRequirement::AllowDeath)?;
+
+			Ok(())
 		}
 
 		/// Deposit rewards into the pool (team only)
@@ -189,60 +246,53 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			// TODO: Implement deposit_rewards functionality
-			// 1. Ensure origin is from RewardOrigin and signed
-			// 2. Validate amount > 0
-			// 3. Update pool state
-			// 4. Transfer rewards to pool account
-			// 5. Update total rewards
-			// 6. Update AccRewardPerShare if there are deposits
-			//
-			// Hints:
-			// - Use T::RewardOrigin::ensure_origin(origin.clone())?
-			// - reward_per_share_increase = amount × precision / total_deposited
-			// - Only update AccRewardPerShare if total_deposited > 0
-			todo!()
+			let who = T::RewardOrigin::ensure_origin(origin)?;
+			ensure!(!amount.is_zero(), Error::<T>::ZeroAmount);
+
+			let pool_account = Self::account_id();
+			T::Currency::transfer(&who, &pool_account, amount, ExistenceRequirement::AllowDeath)?;
+
+			TotalRewards::<T>::mutate(|r| *r = r.saturating_add(amount));
+
+			let total_deposited = Self::total_deposited();
+			if !total_deposited.is_zero() {
+				let precision = Self::precision();
+				let increment = amount.saturating_mul(precision) / total_deposited;
+				AccRewardPerShare::<T>::mutate(|v| *v = v.saturating_add(increment));
+			}
+
+			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID of the pool
 		pub fn account_id() -> T::AccountId {
-			// TODO: Convert PalletId to AccountId
-			// Hint: Use T::PalletId::get().into_account_truncating()
-			todo!()
+			T::PalletId::get().into_account_truncating()
 		}
 
 		/// Precision factor for reward calculations (1e12)
 		fn precision() -> BalanceOf<T> {
-			// TODO: Return 1e12 as BalanceOf<T>
-			// Hint: 1_000_000_000_000
-			todo!()
+			(1_000_000_000_000u128).saturated_into()
 		}
 
 		/// Update pool state (called before any state-changing operation)
 		fn update_pool() -> DispatchResult {
-			// TODO: Update the last reward block
-			// 1. Get current block number
-			// 2. Update LastRewardBlock storage
-			// Hint: Use frame_system::Pallet::<T>::block_number()
-			todo!()
+			let now = frame_system::Pallet::<T>::block_number();
+			LastRewardBlock::<T>::put(now);
+			Ok(())
 		}
 		/// Calculate pending rewards for a user
 		fn calculate_pending_rewards(who: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
-			// TODO: Implement reward calculation
-			// 1. Get user's deposit info
-			// 2. Get current AccRewardPerShare
-			// 3. Calculate total rewards user should have: amount × AccRewardPerShare / precision
-			// 4. Calculate pending: total_rewards - reward_debt
-			//
-			// Formula: pending = (amount × AccRewardPerShare / precision) - reward_debt
-			//
-			// This works because:
-			// - total_rewards = what user would earn if they were here from start
-			// - reward_debt = what they would have earned before they joined
-			// - pending = what they actually earned since joining
-			todo!()
+			if let Some(info) = Deposits::<T>::get(who) {
+				let acc_per_share = Self::acc_reward_per_share();
+				let precision = Self::precision();
+				let total_due = acc_per_share.saturating_mul(info.amount) / precision;
+				let pending = total_due.saturating_sub(info.reward_debt);
+				Ok(pending)
+			} else {
+				Err(Error::<T>::NoDeposit.into())
+			}
 		}
 
 	}

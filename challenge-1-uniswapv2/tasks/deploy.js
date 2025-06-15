@@ -2,7 +2,7 @@ const { task } = require("hardhat/config");
 const { readFileSync } = require('fs');
 const { join } = require('path');
 
-task("deploy-revive", "Deploys a contract")
+task("deploy-bytecode", "Deploys a contract from pre‑compiled Polkavm bytecode")
   .addParam("contract", "The contract name")
   .addParam("args", "Constructor arguments (comma-separated)")
   .setAction(async (taskArgs, hre) => {

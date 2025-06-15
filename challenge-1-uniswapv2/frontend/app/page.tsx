@@ -3,108 +3,64 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+    <section className="relative isolate overflow-hidden py-24 sm:py-32">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20 blur-3xl" />
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 px-4 text-center sm:gap-16">
         <Image
           src="/og-logo.png"
           alt="OpenGuild logo"
-          width={180}
-          height={38}
+          width={220}
+          height={46}
           priority
+          className="dark:invert"
         />
-        <p>Get started by checking out the demos</p>
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            <Link href="/wallet">Wallet</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/send-transaction">Send transaction</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/write-contract">Write contract</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+        <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+          Polkadot DApp UI Kit
+        </h1>
+        <p className="max-w-2xl text-lg text-muted-foreground">
+          Kick‑start your next Polkadot project with gorgeous, production‑ready
+          components, in‑dapp wallet, and seamless chain integrations.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-4">
+          <Link
+            href="/uniswapv2"
+            className="rounded-lg bg-primary px-6 py-3 text-primary-foreground font-semibold shadow transition hover:opacity-90"
+          >
+            Launch DEX Demo
+          </Link>
           <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
             href="https://github.com/buildstationorg/dotui"
             target="_blank"
             rel="noopener noreferrer"
+            className="rounded-lg border border-border px-6 py-3 font-semibold transition hover:bg-accent"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://github.com/buildstationorg/dotui/tree/main/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+            GitHub
           </a>
         </div>
       </div>
-      <footer className="row-start-3 flex flex-col gap-4">
-        <div className="flex gap-6 flex-wrap items-center justify-center">
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/buildstationorg/dotui/tree/main/docs"
-            target="_blank"
-            rel="noopener noreferrer"
+
+      <div className="mx-auto mt-24 grid max-w-6xl gap-6 px-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { href: "/uniswapv2", title: "DEX" },
+          { href: "/send-transaction", title: "Send Transaction" },
+          { href: "/write-contract", title: "Write Contract" },
+          { href: "/mint-redeem-lst-bifrost", title: "Mint/Redeem LST" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="group rounded-xl border border-border p-6 transition hover:bg-accent"
           >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/file.svg"
-              alt="File icon"
-              width={16}
-              height={16}
-            />
-            Learn
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/buildstationorg/dotui/tree/main/components"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/window.svg"
-              alt="Window icon"
-              width={16}
-              height={16}
-            />
-            Components
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://openguild.wtf"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/globe.svg"
-              alt="Globe icon"
-              width={16}
-              height={16}
-            />
-            Go to openguild.wtf →
-          </a>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Maintained by <a className="underline underline-offset-4" href="https://buildstation.org" target="_blank" rel="noopener noreferrer">buildstation.org</a> with support from <a className="underline underline-offset-4" href="https://openguild.wtf" target="_blank" rel="noopener noreferrer">OpenGuild</a>
-        </div>
-      </footer>
-    </div>
+            <h3 className="text-lg font-semibold leading-snug group-hover:text-primary">
+              {item.title}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Quick preview &rarr;
+            </p>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

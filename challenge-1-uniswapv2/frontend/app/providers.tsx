@@ -20,7 +20,6 @@ import { defineChain } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, http, createConfig } from 'wagmi';
 import { Provider as JotaiProvider } from 'jotai';
-// import according to docs
 
 export const paseoAssetHub = defineChain({
   id: 420417733,

@@ -48,12 +48,15 @@ describe('UniswapV2Pair', function() {
     let token0Address = await token0.getAddress();
     let token1Address = await token1.getAddress();
 
-    [token0, token1] = token0Address < token1Address ? 
-    [token0, token1] : 
-    [token1, token0];
+    // Ensure token0/token1 variables **and** their address counterparts are consistently ordered
+    // Compare numerically to avoid checksum‑case discrepancies
+    if (BigInt(token0Address) > BigInt(token1Address)) {
+      [token0, token1] = [token1, token0];
+      [token0Address, token1Address] = [token1Address, token0Address];
+    }
 
-    let first = await token0.getAddress();
-    let second = await token1.getAddress();
+    const first = token0Address;
+    const second = token1Address;
 
     const bytecode = UniswapV2Pair.bytecode;
     const initCodeHash = keccak256(bytecode);

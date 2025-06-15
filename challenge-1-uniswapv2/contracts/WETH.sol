@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity 0.8.29;
 
 contract WETH {
     string public name     = "Wrapped Ether";
@@ -24,11 +24,8 @@ contract WETH {
     function withdraw(uint wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
-        
-        // Use call instead of transfer for safer ETH transfers
         (bool success, ) = payable(msg.sender).call{value: wad}("");
         require(success, "ETH transfer failed");
-        
         emit Withdrawal(msg.sender, wad);
     }
 
@@ -51,18 +48,13 @@ contract WETH {
         returns (bool)
     {
         require(balanceOf[src] >= wad);
-
-        // Use type(uint256).max instead of uint(-1) for modern Solidity
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }
-
         balanceOf[src] -= wad;
         balanceOf[dst] += wad;
-
         emit Transfer(src, dst, wad);
-
         return true;
     }
 }

@@ -59,8 +59,8 @@ Build the UI with features based on the requirements:
 | Faucet | https://faucet.polkadot.io/?parachain=1111 |
 
 ## Submission Requirements 
-- [ ] Finish `TODO` smart contract logic
-- [ ] Complete UI 
+- [x] Finish `TODO` smart contract logic
+- [x] Complete UI 
 - [ ] Run tests 
 - [ ] Deploy to Paseo Asset Hub 
 

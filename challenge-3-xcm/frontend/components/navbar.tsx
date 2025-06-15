@@ -1,32 +1,27 @@
+"use client";
+
 import Link from "next/link";
 
 export default function Navbar() {
+  const linkClass =
+    "text-sm font-medium transition-colors hover:text-primary";
   return (
-    <div className="flex flex-wrap items-center justify-center w-full gap-2">
-      <Link className="text-sm underline underline-offset-4" href="/">
+    <nav className="flex flex-wrap items-center justify-center gap-4">
+      <Link className={linkClass} href="/">
         Home
       </Link>
-      <Link className="text-sm underline underline-offset-4" href="/wallet">
-        Wallet
+      <Link className={linkClass} href="/send-transaction">
+        Send Tx
       </Link>
-      <Link
-        className="text-sm underline underline-offset-4"
-        href="/send-transaction"
-      >
-        Send transaction
+      <Link className={linkClass} href="/write-contract">
+        Write Contract
       </Link>
-      <Link
-        className="text-sm underline underline-offset-4"
-        href="/write-contract"
-      >
-        Write contract
+      <Link className={linkClass} href="/mint-redeem-lst-bifrost">
+        LST Bifrost
       </Link>
-      <Link
-        className="text-sm underline underline-offset-4"
-        href="/mint-redeem-lst-bifrost"
-      >
-        Mint/Redeem LST Bifrost
+      <Link className={linkClass} href="/swap-hydration">
+        Swap (Hydration)
       </Link>
-    </div>
+    </nav>
   );
 }

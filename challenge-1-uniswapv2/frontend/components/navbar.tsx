@@ -1,32 +1,40 @@
+"use client";
+
 import Link from "next/link";
 
 export default function Navbar() {
   return (
-    <div className="flex flex-wrap items-center justify-center w-full gap-2">
-      <Link className="text-sm underline underline-offset-4" href="/">
+    <nav className="hidden md:flex items-center gap-6">
+      <Link
+        href="/"
+        className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+      >
         Home
       </Link>
-      <Link className="text-sm underline underline-offset-4" href="/wallet">
-        Wallet
-      </Link>
       <Link
-        className="text-sm underline underline-offset-4"
         href="/send-transaction"
+        className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
       >
-        Send transaction
+        Send Transaction
       </Link>
       <Link
-        className="text-sm underline underline-offset-4"
         href="/write-contract"
+        className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
       >
-        Write contract
+        Write Contract
       </Link>
       <Link
-        className="text-sm underline underline-offset-4"
         href="/mint-redeem-lst-bifrost"
+        className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
       >
-        Mint/Redeem LST Bifrost
+        Mint/Redeem LST
       </Link>
-    </div>
+      <Link
+        href="/uniswapv2"
+        className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+      >
+        DEX
+      </Link>
+    </nav>
   );
 }

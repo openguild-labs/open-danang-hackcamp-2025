@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Unbounded } from "next/font/google";
 import "./globals.css";
-import '@rainbow-me/rainbowkit/styles.css';
-import { Providers } from '@/app/providers';
+import "@rainbow-me/rainbowkit/styles.css";
+import { Providers } from "@/app/providers";
+import Navbar from "@/components/navbar";
 
 const unbounded = Unbounded({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  display: 'swap',
-})
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DOT UI kit",
@@ -22,13 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={unbounded.className}
-      >
+      <body className={unbounded.className}>
         <Providers>
-          <main>
-            {children}
-          </main>
+          <Navbar />
+          <main>{children}</main>
         </Providers>
       </body>
     </html>

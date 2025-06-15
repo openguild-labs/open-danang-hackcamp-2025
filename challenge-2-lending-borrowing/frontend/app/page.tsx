@@ -1,110 +1,115 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          src="/og-logo.png"
-          alt="OpenGuild logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <p>Get started by checking out the demos</p>
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            <Link href="/wallet">Wallet</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/send-transaction">Send transaction</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/write-contract">Write contract</Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://github.com/buildstationorg/dotui"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+    <div className="min-h-screen flex flex-col">
+      {/* Hero */}
+      <section className="flex-1 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-pink-500/40 to-indigo-600/30 opacity-20 pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 py-24 lg:py-32 gap-8">
+          <Image
+            src="/og-logo.png"
+            alt="DotUI Logo"
+            width={200}
+            height={60}
+            priority
+            className="dark:invert"
+          />
+          {/* Responsive heading with clamp to avoid overflow */}
+          <h1 className="font-extrabold tracking-tight leading-tight max-w-3xl text-balance break-words"
+              style={{ fontSize: "clamp(2rem, 6vw, 3.5rem)" }}>
+            Build&nbsp;Seamless&nbsp;Polkadot&nbsp;dApps
+          </h1>
+          <p className="max-w-xl text-muted-foreground text-lg sm:text-xl">
+            An opinionated UI kit with ready‑made Web3 components, hooks and beautiful styles to kick‑start your Polkadot Asset&nbsp;Hub project.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link
+              href="/lending-borrowing"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-all font-medium"
+            >
+              Explore Lending Demo
+            </Link>
+            <Link
+              href="https://github.com/buildstationorg/dotui"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-md border border-border hover:bg-secondary/40 transition-all font-medium"
+            >
+              GitHub&nbsp;Repo
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Links */}
+      <section className="py-16 bg-secondary/30 backdrop-blur-lg">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <FeatureCard
+            title="Send Transaction"
+            description="Transfer assets with a few clicks."
+            href="/send-transaction"
+          />
+          <FeatureCard
+            title="Write Contract"
+            description="Interact with any ERC‑20 smart contract."
+            href="/write-contract"
+          />
+          <FeatureCard
+            title="Mint / Redeem LST"
+            description="Handle Bifrost LST mint and redemption."
+            href="/mint-redeem-lst-bifrost"
+          />
+          <FeatureCard
+            title="Lending & Borrowing"
+            description="Deposit collateral and borrow assets."
+            href="/lending-borrowing"
+          />
+          <FeatureCard
+            title="Docs"
+            description="Dive into component and hook guides."
             href="https://github.com/buildstationorg/dotui/tree/main/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            external
+          />
         </div>
-      </div>
-      <footer className="row-start-3 flex flex-col gap-4">
-        <div className="flex gap-6 flex-wrap items-center justify-center">
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/buildstationorg/dotui/tree/main/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/file.svg"
-              alt="File icon"
-              width={16}
-              height={16}
-            />
-            Learn
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/buildstationorg/dotui/tree/main/components"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/window.svg"
-              alt="Window icon"
-              width={16}
-              height={16}
-            />
-            Components
-          </a>
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://openguild.wtf"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="https://nextjs.org/icons/globe.svg"
-              alt="Globe icon"
-              width={16}
-              height={16}
-            />
-            Go to openguild.wtf →
-          </a>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Maintained by <a className="underline underline-offset-4" href="https://buildstation.org" target="_blank" rel="noopener noreferrer">buildstation.org</a> with support from <a className="underline underline-offset-4" href="https://openguild.wtf" target="_blank" rel="noopener noreferrer">OpenGuild</a>
-        </div>
+      </section>
+
+      <footer className="py-6 text-center text-sm text-muted-foreground">
+        © 2025 DotUI by OpenGuild — Built with ❤️ for Polkadot ecosystem
       </footer>
     </div>
+  );
+}
+
+function FeatureCard({
+  title,
+  description,
+  href,
+  external = false,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  external?: boolean;
+}) {
+  const classes =
+    "group relative rounded-xl border border-border bg-card/60 p-6 backdrop-blur hover:shadow-lg transition-shadow";
+  const linkProps = external
+    ? { href, target: "_blank", rel: "noopener noreferrer" }
+    : { href };
+
+  return (
+    <Link {...linkProps} className={classes}>
+      <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+        {title}
+        <span className="inline-block transition-transform group-hover:translate-x-1">
+          →
+        </span>
+      </h3>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </Link>
   );
 }

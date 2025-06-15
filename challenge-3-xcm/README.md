@@ -7,7 +7,7 @@ A cross-chain application leverages XCM to perform operations across multiple bl
 ## Hackers can choose one of the following features: 
 
 - [ ] Mint NFT on System Chain and transfer NFT to Parachain
-- [ ] Swap Token on Hydration. 
+- [x] Swap Token on Hydration. 
 - [ ] Stake to the Relaychain Nomination Pools directly on Asset Hub
 - [ ] Vote OpenGov proposals with tokens on Asset Hub. 
 

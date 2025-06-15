@@ -20,14 +20,14 @@ import { defineChain } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, http, createConfig } from 'wagmi';
 import { Provider as JotaiProvider } from 'jotai';
-// import according to docs
+import { Toaster } from "@/components/ui/toaster";
 
 export const paseoAssetHub = defineChain({
-  id: 420417733,
-  name: "Paseo AssetHub",
+  id: 420420422,
+  name: 'Paseo AssetHub',
   nativeCurrency: {
     decimals: 18,
-    name:'Paseo',
+    name: 'Paseo',
     symbol: 'PAS',
   },
   rpcUrls: {
@@ -37,7 +37,10 @@ export const paseoAssetHub = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'Explorer', url: 'https://blockscout-passet-hub.parity-testnet.parity.io/' },
+    default: {
+      name: 'Explorer',
+      url: 'https://blockscout-passet-hub.parity-testnet.parity.io/',
+    },
   },
   contracts: {
     multicall3: {
@@ -45,7 +48,7 @@ export const paseoAssetHub = defineChain({
       blockCreated: 10174702,
     },
   },
-})
+});
 
 export const localConfig = createConfig({
   chains: [
@@ -64,11 +67,10 @@ export const localConfig = createConfig({
 });
 
 const { wallets } = getDefaultWallets();
-// initialize and destructure wallets object
 
 const config = getDefaultConfig({
-  appName: "DOTUI", // Name your app
-  projectId: "ddf8cf3ee0013535c3760d4c79c9c8b9", // Enter your WalletConnect Project ID here
+  appName: 'DOTUI',
+  projectId: 'ddf8cf3ee0013535c3760d4c79c9c8b9',
   wallets: [
     ...wallets,
     {
@@ -80,7 +82,7 @@ const config = getDefaultConfig({
     paseoAssetHub,
     moonbeam,
     moonbaseAlpha,
-    manta
+    manta,
   ],
   transports: {
     [paseoAssetHub.id]: http(),
@@ -88,7 +90,7 @@ const config = getDefaultConfig({
     [moonbaseAlpha.id]: http(),
     [manta.id]: http(),
   },
-  ssr: true, // Because it is Nextjs's App router, you need to declare ssr as true
+  ssr: true,
 });
 
 const queryClient = new QueryClient();
@@ -100,6 +102,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <RainbowKitProvider>
             {children}
+            <Toaster />
           </RainbowKitProvider>
         </QueryClientProvider>
       </WagmiProvider>
