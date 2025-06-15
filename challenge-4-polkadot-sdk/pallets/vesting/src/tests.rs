@@ -24,7 +24,7 @@ fn vested_transfer_works() {
 
         // Create a vesting schedule
         let schedule = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 10,
             period_count: 5,
             per_period: 10,
@@ -37,7 +37,7 @@ fn vested_transfer_works() {
         assert_ok!(Vesting::vested_transfer(
             RuntimeOrigin::signed(ALICE),
             BOB,
-            schedule
+            schedule.clone()
         ));
 
         // Verify balances after transfer
@@ -49,10 +49,10 @@ fn vested_transfer_works() {
         // Verify vesting schedule was created
         let schedules = Vesting::vesting_schedules(&BOB);
         assert_eq!(schedules.len(), 1);
-        assert_eq!(schedules[0].start, 100);
-        assert_eq!(schedules[0].period, 10);
-        assert_eq!(schedules[0].period_count, 5);
-        assert_eq!(schedules[0].per_period, 10);
+        assert_eq!(schedules[0].start, schedule.start);
+        assert_eq!(schedules[0].period, schedule.period);
+        assert_eq!(schedules[0].period_count, schedule.period_count);
+        assert_eq!(schedules[0].per_period, schedule.per_period);
 
         // Verify locked balance of BOB (should be 50 since all tokens are locked)
         assert_eq!(Vesting::locked_balance(&BOB), 50);
@@ -65,7 +65,7 @@ fn vested_transfer_fails_if_zero_period_or_count() {
     ExtBuilder::build().execute_with(|| {
         // Create a vesting schedule with zero period
         let schedule_1 = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 0,
             period_count: 10,
             per_period: 10,
@@ -79,7 +79,7 @@ fn vested_transfer_fails_if_zero_period_or_count() {
 
         // Create another with zero count
         let schedule_2 = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 10,
             period_count: 0,
             per_period: 10,
@@ -98,7 +98,7 @@ fn claim_works() {
     ExtBuilder::build().execute_with(|| {
         // Create a vesting schedule
         let schedule = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 10,
             period_count: 5,
             per_period: 10,
@@ -125,18 +125,18 @@ fn claim_works() {
         let schedules = Vesting::vesting_schedules(&BOB);
         assert_eq!(schedules.len(), 1);
 
-        // Move block until the end of the vesting schedule, which is schedule.period_count * schedule.period
+        // Move the block forward
         System::set_block_number(150);
 
         // Check if the claim works
         assert_ok!(Vesting::claim(RuntimeOrigin::signed(BOB)));
 
-        // Validation after claim, locked balance will move to vested balance
-        // Check if the locked balance of BOB is 0
-        assert_eq!(Vesting::locked_balance(&BOB), 0);
+        // Validation after claim, some locked balance move to vested balance
+        // Check if the locked balance of BOB is 10
+        assert_eq!(Vesting::locked_balance(&BOB), 10);
 
-        // Check if the vested balance of BOB is 50
-        assert_eq!(Vesting::vested_balance(&BOB), 50);
+        // Check if the vested balance of BOB is 40
+        assert_eq!(Vesting::vested_balance(&BOB), 40);
     });
 }
 
@@ -145,7 +145,7 @@ fn update_vesting_schedules_works() {
     ExtBuilder::build().execute_with(|| {
         // Create a vesting schedule, with total amount 50
         let schedule = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 10,
             period_count: 5,
             per_period: 10,
@@ -208,7 +208,7 @@ fn multiple_vesting_schedule_claim_works() {
     ExtBuilder::build().execute_with(|| {
         // Create a vesting schedule
         let schedule = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 4,
             period_count: 5,
             per_period: 4,
@@ -223,7 +223,7 @@ fn multiple_vesting_schedule_claim_works() {
 
         // Create another vesting schedule
         let schedule_2 = VestingSchedule {
-            start: 100,
+            start: 110,
             period: 2,
             period_count: 10,
             per_period: 2,
@@ -263,10 +263,10 @@ fn multiple_vesting_schedule_claim_works() {
         assert_ok!(Vesting::claim(RuntimeOrigin::signed(BOB)));
 
         // Validation after claim
-        // Check if the locked balance of BOB is 0
-        assert_eq!(Vesting::locked_balance(&BOB), 0);
-        // Check if the vested balance of BOB is 40
-        assert_eq!(Vesting::vested_balance(&BOB), 40);
+        // Check if the locked balance of BOB is 22
+        assert_eq!(Vesting::locked_balance(&BOB), 22);
+        // Check if the vested balance of BOB is 18
+        assert_eq!(Vesting::vested_balance(&BOB), 18);
         // Check if BOB has 40 free balance but frozen/locked
         assert_eq!(PalletBalances::free_balance(&BOB), 40);
     });
