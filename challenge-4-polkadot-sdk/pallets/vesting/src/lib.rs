@@ -189,13 +189,7 @@ pub mod pallet {
             // Ensure the origin is signed
             let sender = ensure_signed(origin)?;
 
-            // Get the current vested amount
-            let vested_amount = Self::vested_balance(&sender);
-
-            // Ensure there are vested tokens to claim
-            ensure!(vested_amount > Zero::zero(), Error::<T>::NotVested);
-
-            // Update the lock for the sender (this will reduce the lock amount)
+            // Update the lock for the sender (this will reduce the locked amount)
             let locked_amount = Self::update_lock(&sender)?;
 
             // If the locked amount is zero, remove the lock
