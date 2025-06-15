@@ -36,7 +36,7 @@ Link contract: [Contract](./contracts)
 
 ### 4. Tests
 
-- [ ] Test all function implementations
+- [x] Test all function implementations
 
 ## Implementation UI Requirements
 
@@ -44,13 +44,13 @@ Link UI sample: [DOT UI](./frontend)
 
 Build the UI with features based on the requirements:
 
-- [ ] **Deposit/Withdraw Collateral**
-- [ ] **Loan and Repay**
-- [ ] **Show loan details**
+- [x] **Deposit/Withdraw Collateral**
+- [x] **Loan and Repay**
+- [x] **Show loan details**
 
 ## Submission Requirements
 
-- [ ] Finish `TODO` smart contract logic
-- [ ] Complete UI
-- [ ] Run tests
-- [ ] Deploy to Paseo Asset Hub
+- [x] Finish `TODO` smart contract logic
+- [x] Complete UI
+- [x] Run tests
+- [x] Deploy to Paseo Asset Hub

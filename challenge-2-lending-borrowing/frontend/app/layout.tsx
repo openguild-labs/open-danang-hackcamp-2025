@@ -13,8 +13,8 @@ const unbounded = Unbounded({
 })
 
 export const metadata: Metadata = {
-  title: "LendFi - Decentralized Lending & Borrowing",
-  description: "A decentralized lending and borrowing platform built on Polkadot",
+  title: "OpenGuild DaNang Hackcamp 2025",
+  description: "a UI kit for Polkadot DApps",
 };
 
 export default function RootLayout({
@@ -26,7 +26,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={unbounded.className}>
         <Providers>
-          <Header />
           <main className="min-h-screen bg-background">
             {children}
           </main>
