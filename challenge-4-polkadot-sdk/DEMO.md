@@ -1,0 +1,1 @@
+Pallet vesting demo link: https://drive.google.com/file/d/1CTVmwLsuXVmVRDxS7EqPQTwCvV_1u6WV/view?usp=drive_link
