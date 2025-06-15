@@ -1,18 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, Search, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Check, Copy, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Token } from "./create-liquidity-pool"
+import { useConfig, useReadContract } from "wagmi"
+import { contractAddresses } from "@/lib/contractAddresses"
+import { uniswapV2FactoryAbi } from "@/lib/abi"
+import { Address, getAddress } from "viem"
+import { useAtomValue } from "jotai"
+import { addressAtom } from "../../sigpasskit"
+import { useAccount } from "wagmi"
+import { localConfig } from "@/app/providers"
+import { TokenSelector } from "./token-selector"
 
 interface TokenPairSelectorProps {
     tokenA: Token | null
@@ -20,6 +21,7 @@ interface TokenPairSelectorProps {
     onTokenASelect: (token: Token) => void
     onTokenBSelect: (token: Token) => void
     availableTokens: Token[]
+    onPairStatusChange: (exists: boolean, pairAddress: string | null) => void
 }
 
 export function TokenPairSelector({
@@ -27,10 +29,42 @@ export function TokenPairSelector({
     tokenB,
     onTokenASelect,
     onTokenBSelect,
-    availableTokens
+    availableTokens,
+    onPairStatusChange
 }: TokenPairSelectorProps) {
+    const config = useConfig()
+    const address = useAtomValue(addressAtom)
+    const { address: wagmiAddress } = useAccount()
     const [openDialog, setOpenDialog] = useState<'A' | 'B' | null>(null)
-    const [searchQuery, setSearchQuery] = useState("")
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
+
+    const currentAddress = address || wagmiAddress
+    const currentConfig = address ? localConfig : config
+
+    // Check if pair exists
+    const { data: pairAddress, isLoading: isPairLoading } = useReadContract({
+        config: currentConfig,
+        address: getAddress(contractAddresses.UNISWAP_V2_FACTORY) as Address,
+        abi: uniswapV2FactoryAbi,
+        functionName: "getPair",
+        args: tokenA && tokenB ? [
+            getAddress(tokenA.address) as Address,
+            getAddress(tokenB.address) as Address
+        ] : undefined,
+        query: {
+            enabled: !!(tokenA && tokenB && tokenA.address !== tokenB.address),
+        }
+    })
+
+    // Update parent component when pair status changes
+    useEffect(() => {
+        if (tokenA && tokenB && pairAddress !== undefined) {
+            const exists = pairAddress !== "0x0000000000000000000000000000000000000000"
+            onPairStatusChange(exists, exists ? pairAddress as string : null)
+        } else {
+            onPairStatusChange(false, null)
+        }
+    }, [pairAddress, tokenA, tokenB, onPairStatusChange])
 
     const getAvailableTokensForA = () => {
         return availableTokens.filter(token => !tokenB || token.address !== tokenB.address)
@@ -40,174 +74,107 @@ export function TokenPairSelector({
         return availableTokens.filter(token => !tokenA || token.address !== tokenA.address)
     }
 
-    const handleTokenSelect = (token: Token, type: 'A' | 'B') => {
-        if (type === 'A') {
-            onTokenASelect(token)
-        } else {
-            onTokenBSelect(token)
+    const handleCopyAddress = async (tokenAddress: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        try {
+            await navigator.clipboard.writeText(tokenAddress)
+            setCopiedAddress(tokenAddress)
+            setTimeout(() => setCopiedAddress(null), 2000)
+        } catch (err) {
+            console.error('Failed to copy address:', err)
         }
-        setOpenDialog(null)
-        setSearchQuery("")
     }
 
-    const TokenSelector = ({
-        label,
-        selectedToken,
-        onSelect,
-        availableTokens,
-        dialogKey
-    }: {
-        label: string
-        selectedToken: Token | null
-        onSelect: (token: Token) => void
-        availableTokens: Token[]
-        dialogKey: 'A' | 'B'
-    }) => {
-        const filteredTokens = availableTokens.filter((t) =>
-            searchQuery === ""
-                ? true
-                : t.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                t.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+    // Pair status display
+    const renderPairStatus = () => {
+        if (!tokenA || !tokenB || tokenA.address === tokenB.address) return null
 
-        return (
-            <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {label}
-                </Label>
+        if (isPairLoading) {
+            return (
+                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
+                        Checking if pair exists...
+                    </AlertDescription>
+                </Alert>
+            )
+        }
 
-                <Dialog open={openDialog === dialogKey} onOpenChange={(open) => setOpenDialog(open ? dialogKey : null)}>
-                    <DialogTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="w-full h-14 justify-between bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                        >
-                            {selectedToken ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
-                                        {selectedToken.symbol.charAt(0)}
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="font-medium">{selectedToken.symbol}</div>
-                                        <div className="text-sm text-gray-500">{selectedToken.name}</div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <span className="text-gray-500">Select token</span>
-                            )}
-                            <ChevronDown className="h-4 w-4" />
-                        </Button>
-                    </DialogTrigger>
+        const pairExists = pairAddress !== "0x0000000000000000000000000000000000000000"
 
-                    <DialogContent className="max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Select {label}</DialogTitle>
-                        </DialogHeader>
-
-                        {/* Search Input */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                                placeholder="Search by name or symbol"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-10"
-                            />
-                            {searchQuery && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
+        if (pairExists) {
+            return (
+                <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <Check className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                        <div className="flex items-center justify-between">
+                            <span>Pair exists! You can add liquidity.</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => handleCopyAddress(pairAddress as string, e)}
+                                className="h-6 px-2"
+                            >
+                                {copiedAddress === pairAddress ? (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                    <Copy className="h-3 w-3" />
+                                )}
+                            </Button>
                         </div>
-
-                        {/* Token List */}
-                        <div className="max-h-80 overflow-y-auto space-y-1">
-                            {filteredTokens.length > 0 ? (
-                                filteredTokens.map((token) => (
-                                    <Button
-                                        key={token.address}
-                                        variant="ghost"
-                                        onClick={() => handleTokenSelect(token, dialogKey)}
-                                        className="w-full justify-start p-3 h-auto hover:bg-gray-50 dark:hover:bg-gray-800"
-                                    >
-                                        <div className="flex items-center gap-3 w-full">
-                                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                                {token.symbol.charAt(0)}
-                                            </div>
-                                            <div className="flex-1 text-left">
-                                                <div className="font-medium">{token.symbol}</div>
-                                                <div className="text-sm text-gray-500">{token.name}</div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-sm font-medium">{token.balance}</div>
-                                                <div className="text-xs text-gray-500">${token.price}</div>
-                                            </div>
-                                        </div>
-                                    </Button>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
-                                        <Search className="h-6 w-6" />
-                                    </div>
-                                    <p>No tokens found</p>
-                                    <p className="text-sm">Try adjusting your search</p>
-                                </div>
-                            )}
+                        <div className="text-xs font-mono mt-1">
+                            <span className="text-gray-500">
+                                {`Pair address: ${pairAddress}`}
+                            </span>
                         </div>
-
-                        {/* Popular Tokens Section (when no search) */}
-                        {searchQuery === "" && (
-                            <div className="border-t pt-4">
-                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Popular Tokens
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableTokens.slice(0, 4).map((token) => (
-                                        <Button
-                                            key={token.address}
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleTokenSelect(token, dialogKey)}
-                                            className="h-8"
-                                        >
-                                            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold mr-2">
-                                                {token.symbol.charAt(0)}
-                                            </div>
-                                            {token.symbol}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
-            </div>
-        )
+                    </AlertDescription>
+                </Alert>
+            )
+        } else {
+            return (
+                <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-900/20">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-800 dark:text-orange-200">
+                        Pair doesn't exist. You'll create a new pool.
+                    </AlertDescription>
+                </Alert>
+            )
+        }
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TokenSelector
-                label="Token A"
-                selectedToken={tokenA}
-                onSelect={onTokenASelect}
-                availableTokens={getAvailableTokensForA()}
-                dialogKey="A"
-            />
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TokenSelector
+                    label="Token A"
+                    selectedToken={tokenA}
+                    onSelect={onTokenASelect}
+                    availableTokens={getAvailableTokensForA()}
+                    dialogKey="A"
+                    openDialog={openDialog}
+                    setOpenDialog={setOpenDialog}
+                    currentAddress={currentAddress}
+                    currentConfig={currentConfig}
+                    handleCopyAddress={handleCopyAddress}
+                    copiedAddress={copiedAddress}
+                />
 
-            <TokenSelector
-                label="Token B"
-                selectedToken={tokenB}
-                onSelect={onTokenBSelect}
-                availableTokens={getAvailableTokensForB()}
-                dialogKey="B"
-            />
+                <TokenSelector
+                    label="Token B"
+                    selectedToken={tokenB}
+                    onSelect={onTokenBSelect}
+                    availableTokens={getAvailableTokensForB()}
+                    dialogKey="B"
+                    openDialog={openDialog}
+                    setOpenDialog={setOpenDialog}
+                    currentAddress={currentAddress}
+                    currentConfig={currentConfig}
+                    handleCopyAddress={handleCopyAddress}
+                    copiedAddress={copiedAddress}
+                />
+            </div>
+
+            {renderPairStatus()}
         </div>
     )
 }

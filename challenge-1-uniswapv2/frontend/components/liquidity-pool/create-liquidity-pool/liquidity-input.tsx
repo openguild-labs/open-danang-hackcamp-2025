@@ -1,9 +1,18 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Token } from "./create-liquidity-pool"
+import { useReadContracts } from "wagmi"
+import { erc20Abi } from "@/lib/abi"
+import { Address } from "viem"
+import { useAtomValue } from "jotai"
+import { addressAtom } from "../../sigpasskit"
+import { useAccount } from "wagmi"
+import { localConfig } from "@/app/providers"
+import { useConfig } from "wagmi"
 
 interface LiquidityInputProps {
     label: string
@@ -18,10 +27,63 @@ export function LiquidityInput({
     amount,
     onAmountChange
 }: LiquidityInputProps) {
-    const handleMaxClick = () => {
-        if (token.balance) {
-            onAmountChange(token.balance)
+    const config = useConfig()
+    const address = useAtomValue(addressAtom)
+    const { address: wagmiAddress } = useAccount()
+    const [tokenBalance, setTokenBalance] = useState("0")
+
+    const currentAddress = address || wagmiAddress
+    const currentConfig = address ? localConfig : config
+
+    // Get token balance
+    const { data: tokenData } = useReadContracts({
+        config: currentConfig,
+        contracts: [
+            {
+                abi: erc20Abi,
+                address: token.address as Address,
+                functionName: 'balanceOf',
+                args: [currentAddress as Address],
+            },
+            {
+                abi: erc20Abi,
+                address: token.address as Address,
+                functionName: 'decimals',
+                args: [],
+            }
+        ],
+        query: {
+            enabled: !!token.address && !!currentAddress,
         }
+    })
+
+    // Update token balance when data is available
+    useEffect(() => {
+        if (tokenData && tokenData[0]?.status === 'success' && tokenData[1]?.status === 'success') {
+            const balance = tokenData[0].result as bigint
+            const decimals = tokenData[1].result as number
+
+            if (balance !== undefined && decimals !== undefined) {
+                const balanceNumber = Number(balance) / Math.pow(10, decimals)
+                setTokenBalance(balanceNumber.toString())
+            }
+        }
+    }, [tokenData])
+
+    const handleMaxClick = () => {
+        if (tokenBalance && parseFloat(tokenBalance) > 0) {
+            onAmountChange(tokenBalance)
+        }
+    }
+
+    const formatBalance = (balance: string) => {
+        const num = parseFloat(balance)
+        if (num === 0) return "0"
+        if (num < 0.0001) return "< 0.0001"
+        if (num < 1) return num.toFixed(6)
+        if (num < 1000) return num.toFixed(4)
+        if (num < 1000000) return (num / 1000).toFixed(2) + "K"
+        return (num / 1000000).toFixed(2) + "M"
     }
 
     const totalValue = amount && token.price ?
@@ -55,16 +117,18 @@ export function LiquidityInput({
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">
-                            Balance: {token.balance} {token.symbol}
+                            Balance: {formatBalance(tokenBalance)} {token.symbol}
                         </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleMaxClick}
-                            className="h-6 px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                            MAX
-                        </Button>
+                        {parseFloat(tokenBalance) > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleMaxClick}
+                                className="h-6 px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                                MAX
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
