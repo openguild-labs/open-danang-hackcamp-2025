@@ -1,73 +1,43 @@
-# DOT UI Kit
 
-An open-source, up-to-date, opinionated UI scaffolding kit for the Polkadot ecosystem (starting with Asset Hub). The technical stack is:
+## Challenge details
 
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Lucide icons](https://lucide.dev/)
-- [ShadCN UI](https://ui.shadcn.com/)
-- [RainbowKit](https://www.rainbowkit.com/)
-- [Wagmi](https://wagmi.sh/)
-- [Viem](https://viem.sh/)
-- [Jotai](https://jotai.org/)
-- [Tanstack React Query](https://tanstack.com/query)
-- [Vaul](https://vaul.fun/)
-- [Zod](https://zod.dev/)
-- [React Hook Form](https://react-hook-form.com/)
+A cross-chain application leverages XCM to perform operations across multiple blockchains within the Polkadot ecosystem, enabling seamless interoperability between different parachains.
 
-## Features
 
-- [x] Multi-chain support
-- [x] In-dapp-wallet support
-- [x] WalletConnect support
-- [x] Collection of web3 components to quickly build your frontend or use as a reference
-- [x] React hooks for various onchain interactions with Wagmi
+## Hackers can choose one of the following features: 
 
-## Requirements
+- [ ] Mint NFT on System Chain and transfer NFT to Parachain
+- [x] Swap Token on Hydration. 
+- [ ] Stake to the Relaychain Nomination Pools directly on Asset Hub
+- [ ] Vote OpenGov proposals with tokens on Asset Hub. 
 
-Before you begin, you need to install the following tools:
 
-- [Node (current LTS version)](https://nodejs.org/en/download/)
-- [npm (latest version or > v10)](https://www.npmjs.com/get-npm)
-- [Git](https://git-scm.com/downloads)
+## Implementation Requirements
 
-## Getting started
+- [x] Build XCM cross-chain application specific logic
+- [x] Build application UI that allows users to interact with the underlying logic
 
-```
-git clone https://github.com/buildstationorg/dotui.git
-cd dotui
-npm install
-```
 
-## Running the project
 
-```
-npm run dev
-```
+## Submission Requirements 
+- [x] Build XCM cross-chain application
 
-Default port is 3002. You can change the port in the `package.json` file.
+## Submission
 
-```json
-"scripts": {
-  "dev": "next dev -p 3002", // Change the port here to -p <port>
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint"
-},
-```
+## Web
 
-## Building the project
+Link: https://xcm-swap.vercel.app/
 
-```
-npm run build
-```
+### Demo XCM Swap from different parachains using HydrationDex
 
-## Documentation
+Video: https://youtu.be/Dvt837UKDpc
 
-Please see [`docs`](docs) for more information and guidelines for contributing to DotUI.
+[![XCM Hydration Swap](https://img.youtube.com/vi/Dvt837UKDpc/maxresdefault.jpg)](https://youtu.be/Dvt837UKDpc)
 
-## Contributing to DotUI
+## 👉 Resource for Development
 
-We welcome contributions to DotUI!
+- [XCM Tools](https://github.com/paraspell)
+- [XCM SDK](https://github.com/moonbeam-foundation/xcm-sdk)
 
-Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for more information and guidelines for contributing to DotUI.
+
+
