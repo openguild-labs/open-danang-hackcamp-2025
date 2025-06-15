@@ -1,0 +1,5 @@
+export const contractAddresses = {
+  HARRY_CollateralToken: "0x5687F0A7AD0a66A1EBF6Bc3924A00E5416ED3ebB",
+  HARRY_LendingToken: "0x9d25c235D90F54181e6577E7E9bf8205bBB24692",
+  LendingBorrowing: "0x8CA10E7a97a24907CC98F22e58bB74280DB76dDE",
+};

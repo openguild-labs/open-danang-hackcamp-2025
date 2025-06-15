@@ -3,6 +3,8 @@ import { Unbounded } from "next/font/google";
 import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from '@/app/providers';
+import Header from '@/components/header';
+import { Toaster } from "@/components/ui/toaster";
 
 const unbounded = Unbounded({
   subsets: ['latin'],
@@ -11,7 +13,7 @@ const unbounded = Unbounded({
 })
 
 export const metadata: Metadata = {
-  title: "DOT UI kit",
+  title: "OpenGuild DaNang Hackcamp 2025",
   description: "a UI kit for Polkadot DApps",
 };
 
@@ -22,13 +24,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={unbounded.className}
-      >
+      <body className={unbounded.className}>
         <Providers>
-          <main>
+          <main className="min-h-screen bg-background">
             {children}
           </main>
+          <Toaster />
         </Providers>
       </body>
     </html>
