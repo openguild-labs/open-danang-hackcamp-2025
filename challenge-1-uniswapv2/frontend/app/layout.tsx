@@ -23,7 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={unbounded.className}
+        className={
+          unbounded.className}
       >
         <Providers>
           <main>
