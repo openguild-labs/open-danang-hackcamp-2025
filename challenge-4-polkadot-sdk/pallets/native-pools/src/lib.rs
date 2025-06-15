@@ -15,6 +15,7 @@ use polkadot_sdk::frame_support::{
 use polkadot_sdk::sp_runtime::{
 	traits::{AccountIdConversion, Saturating, Zero}
 };
+use core::convert::TryFrom;
 
 // Re-export all pallet parts, this is needed to properly import the pallet into the runtime.
 pub use pallet::*;
@@ -90,6 +91,16 @@ pub mod pallet {
 	#[pallet::getter(fn last_reward_block)]
 	pub type LastRewardBlock<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
+	/// Pending rewards for each user
+	#[pallet::storage]
+	#[pallet::getter(fn pending_rewards)]
+	pub type PendingRewards<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		BalanceOf<T>,
+		ValueQuery,
+	>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -135,8 +146,9 @@ pub mod pallet {
 				&sender,
 				&Self::account_id(),
 				amount,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
+			let current_block = frame_system::Pallet::<T>::block_number();
 			let reward_debt = amount
 				.saturating_mul(AccRewardPerShare::<T>::get())
 				.checked_div(&Self::precision())
@@ -146,11 +158,12 @@ pub mod pallet {
 					// User already has a deposit, add to existing amount
 					deposit.amount = deposit.amount.saturating_add(amount);
 					deposit.reward_debt = reward_debt;
+					deposit.deposit_block = current_block;
 				} else {	
 					*deposit_info = Some(DepositInfo {
 						amount,
 						reward_debt,
-						deposit_block: frame_system::Pallet::<T>::block_number(),
+						deposit_block: current_block,
 					});
 				}
 			});
@@ -191,8 +204,10 @@ pub mod pallet {
 			// 6. Update user's deposit info (remove if full withdrawal)
 			if withdraw_amount == deposit_info.amount {
 				Deposits::<T>::remove(&sender);
+				PendingRewards::<T>::remove(&sender);
 			} else {
 				let precision = Self::precision();
+				// Calculate new reward debt based on remaining amount
 				let new_reward_debt = deposit_info.amount
 					.saturating_sub(withdraw_amount)
 					.saturating_mul(AccRewardPerShare::<T>::get())
@@ -205,20 +220,23 @@ pub mod pallet {
 						deposit.reward_debt = new_reward_debt;
 					}
 				});
+				
+				// Recalculate pending rewards after withdrawal
+				Self::calculate_pending_rewards(&sender)?;
 			}
 
 			// 7. Transfer tokens and rewards back to user
 			let pool_balance = T::Currency::free_balance(&Self::account_id());
-			let transfer_amount = if pool_balance <= withdraw_amount.saturating_add(pending_rewards) {
-				pool_balance
-			} else {
-				withdraw_amount.saturating_add(pending_rewards)
-			};
+			let total_withdrawal = withdraw_amount.saturating_add(pending_rewards);
+			ensure!(
+                pool_balance >= total_withdrawal,
+                Error::<T>::InsufficientPoolBalance
+            );
 
 			T::Currency::transfer(
 				&Self::account_id(),
 				&sender,
-				transfer_amount,
+				total_withdrawal,
 				ExistenceRequirement::AllowDeath,
 			)?;
 
@@ -246,28 +264,14 @@ pub mod pallet {
 			let pending_rewards = Self::calculate_pending_rewards(&sender)?;
 
 			// 4. Validate rewards > 0 and pool has sufficient balance
+			let pool_balance = T::Currency::free_balance(&Self::account_id());
 			ensure!(pending_rewards > Zero::zero(), Error::<T>::ZeroAmount);
 			ensure!(
-				T::Currency::free_balance(&Self::account_id()) >= pending_rewards,
+				pool_balance >= pending_rewards,
 				Error::<T>::InsufficientPoolBalance
 			);
 
-			// 5. Transfer rewards to user
-			let pool_balance = T::Currency::free_balance(&Self::account_id());
-			let transfer_amount = if pool_balance <= pending_rewards {
-				pool_balance
-			} else {
-				pending_rewards
-			};
-
-			T::Currency::transfer(
-				&Self::account_id(),
-				&sender,
-				transfer_amount,
-				ExistenceRequirement::KeepAlive,
-			)?;
-
-			// 6. Update user's reward debt
+			// 5. Update user's reward debt
 			let precision = Self::precision();
 			let new_reward_debt = deposit_info.amount
 				.saturating_mul(AccRewardPerShare::<T>::get())
@@ -279,6 +283,16 @@ pub mod pallet {
 					deposit.reward_debt = new_reward_debt;
 				}
 			});
+			// 6. Transfer rewards to user
+			// Clear pending rewards after claiming
+			PendingRewards::<T>::remove(&sender);
+
+			T::Currency::transfer(
+				&Self::account_id(),
+				&sender,
+				pending_rewards,
+				ExistenceRequirement::AllowDeath,
+			)?;
 
 			Ok(())
 		}
@@ -302,7 +316,6 @@ pub mod pallet {
 			ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
 			// 3. Check if there are any deposits
 			let total_deposited = TotalDeposited::<T>::get();
-			ensure!(total_deposited > Zero::zero(), Error::<T>::NoDeposit);
 			// 4. Update pool state
 			Self::update_pool()?;
 			// 5. Transfer rewards to pool account
@@ -310,7 +323,7 @@ pub mod pallet {
 				&sender,
 				&Self::account_id(),
 				amount,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			// 6. Update total rewards
 			TotalRewards::<T>::mutate(|total| *total = total.saturating_add(amount));
@@ -319,9 +332,17 @@ pub mod pallet {
 				.saturating_mul(Self::precision())
 				.checked_div(&total_deposited)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
-			AccRewardPerShare::<T>::mutate(|acc_reward_per_share| {
-				*acc_reward_per_share = acc_reward_per_share.saturating_add(reward_per_share_increase);
-			});
+			if total_deposited > Zero::zero() {
+				AccRewardPerShare::<T>::mutate(|acc_reward_per_share| {
+					*acc_reward_per_share = acc_reward_per_share.saturating_add(reward_per_share_increase);
+				});
+
+				// Update pending rewards for all users with deposits
+				Deposits::<T>::iter().for_each(|(account_id, _)| {
+					let _ = Self::calculate_pending_rewards(&account_id);
+				});
+			}
+
 			Ok(())
 		}
 	}
@@ -336,7 +357,12 @@ pub mod pallet {
 
 		/// Precision factor for reward calculations (1e12)
 		fn precision() -> BalanceOf<T> {
-			1_000_000_000_000u128.try_into().unwrap_or_else(|_| BalanceOf::<T>::max_value())
+			// Use a type-safe way to create the precision value
+			// Convert from u64 to Balance using TryFrom
+			match TryFrom::try_from(1_000_000_000_000u64) {
+				Ok(precision) => precision,
+				Err(_) => panic!("Precision value should fit in Balance type"),
+			}
 		}
 
 		/// Update pool state (called before any state-changing operation)
@@ -351,7 +377,7 @@ pub mod pallet {
 		}
 
 		/// Calculate pending rewards for a user
-		fn calculate_pending_rewards(who: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
+		pub fn calculate_pending_rewards(who: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
 			//  Implement reward calculation
             // 1. Get user's deposit info
             // 2. Get current AccRewardPerShare
@@ -366,12 +392,21 @@ pub mod pallet {
             // - pending = what they actually earned since joining
 			let deposit_info = Deposits::<T>::get(who).ok_or(Error::<T>::NoDeposit)?;
 			let acc_reward_per_share = AccRewardPerShare::<T>::get();
+			
+			// Calculate rewards based on current deposit amount
 			let total_rewards = deposit_info.amount
 				.saturating_mul(acc_reward_per_share)
 				.checked_div(&Self::precision())
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
+			
+			// Calculate pending rewards by subtracting reward debt
 			let pending_rewards = total_rewards.saturating_sub(deposit_info.reward_debt);
+			
+			// Store the calculated pending rewards
+			PendingRewards::<T>::insert(who, pending_rewards);
+			
 			Ok(pending_rewards)
 		}
 	}
 }
+

@@ -70,9 +70,9 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 
-pub const ALICE_BALANCE: u64 = 1000;
-pub const BOB_BALANCE: u64 = 1000;
-pub const CHARLIE_BALANCE: u64 = 2000; // Increased to support reward deposits
+pub const ALICE_BALANCE: u64 = 10000;
+pub const BOB_BALANCE: u64 = 10000;
+pub const CHARLIE_BALANCE: u64 = 20000; // Increased to support reward deposits
 
 #[derive(Default)]
 pub struct ExtBuilder;
