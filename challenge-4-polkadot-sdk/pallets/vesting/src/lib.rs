@@ -90,9 +90,9 @@ impl<BlockNumber: AtLeast32Bit + Copy, Balance: AtLeast32Bit + MaxEncodedLen + C
             .saturating_sub(self.vested_amount::<BlockNumberToBalance>(now))
     }
 
-    /// Returns true if the vesting schedule has started
+    /// Returns true if the vesting is in the future
     pub fn is_valid_start_block(&self, current_block: BlockNumber) -> bool {
-        current_block >= self.start
+        self.start > current_block
     }
 }
 
