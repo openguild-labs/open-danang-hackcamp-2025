@@ -370,6 +370,13 @@ pub mod pallet {
             // Ensure the total amount is greater than the minimum vested transfer amount
             ensure!(total_amount >= min_vested_transfer, Error::<T>::AmountLow);
 
+            // Check if sender has enough balance
+            let sender_balance = T::Currency::free_balance(from);
+            ensure!(
+                sender_balance >= total_amount,
+                Error::<T>::InsufficientBalanceToLock
+            );
+
             // Transfer the tokens while ensuring that the sender has enough balance
             T::Currency::transfer(from, to, total_amount, ExistenceRequirement::KeepAlive)?;
 
